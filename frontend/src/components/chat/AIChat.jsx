@@ -63,7 +63,7 @@ const AIChat = () => {
         className="fixed bottom-6 right-6 px-6 py-3 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition-all flex items-center space-x-2 z-50"
       >
         <Sparkles className="w-5 h-5" />
-        <span className="font-medium">Ask AI Assistant</span>
+        <span className="font-semibold">Ask AI Assistant</span>
       </button>
     );
   }
