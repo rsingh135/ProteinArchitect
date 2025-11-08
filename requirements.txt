@@ -9,3 +9,4 @@ rlcard
 gymnasium
 huggingface_hub
 pandas
+sacremoses

@@ -41,6 +41,15 @@ try:
 except (ImportError, ModuleNotFoundError, AttributeError):
     compute_features = None
 
+try:
+    from .query_generator import (
+        UniProtQueryGenerator,
+        search_proteins_from_natural_language
+    )
+except (ImportError, ModuleNotFoundError, AttributeError):
+    UniProtQueryGenerator = None
+    search_proteins_from_natural_language = None
+
 __all__ = [
     "BioGenesis",
     "BioDesignModel",
@@ -50,4 +59,6 @@ __all__ = [
     "create_dataloader",
     "create_sequence_dataloader",
     "compute_features",
+    "UniProtQueryGenerator",
+    "search_proteins_from_natural_language",
 ]

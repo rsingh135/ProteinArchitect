@@ -14,6 +14,7 @@ from services.protein_generator import ProteinGenerator
 from services.oracle import ExpressibilityOracle
 from services.manufacturing_agent import ManufacturingAgent
 from services.llm_agent import LLMAgent
+from services.docking_service import DockingService
 
 load_dotenv()
 
@@ -33,6 +34,7 @@ protein_generator = ProteinGenerator()
 oracle = ExpressibilityOracle()
 manufacturing_agent = ManufacturingAgent()
 llm_agent = LLMAgent()
+docking_service = DockingService()
 
 # Global counter for retraining trigger
 protein_generation_count = 0
@@ -51,12 +53,30 @@ class RefinementRequest(BaseModel):
     refinement_prompt: str
 
 
+class DockingRequest(BaseModel):
+    protein_pdb: str
+    ligand_smiles: Optional[str] = None
+    ligand_mol2: Optional[str] = None
+    ligand_pdb: Optional[str] = None
+    tool: str = "vina"  # vina, diffdock, swissdock, rdock
+    center: Optional[List[float]] = None  # [x, y, z]
+    size: Optional[List[float]] = None  # [x, y, z]
+    exhaustiveness: Optional[int] = 8
+    num_modes: Optional[int] = 9
+
+
 @app.get("/")
 async def root():
     return {
         "message": "Protein Architect API",
         "version": "1.0.0",
-        "endpoints": ["/generate_protein", "/refine_protein", "/health"]
+        "endpoints": [
+            "/generate_protein",
+            "/refine_protein",
+            "/dock_ligand",
+            "/docking_tools",
+            "/health"
+        ]
     }
 
 
@@ -139,4 +159,47 @@ async def refine_protein(request: RefinementRequest):
 async def get_protein_count():
     """Get current protein generation count"""
     return {"count": protein_generation_count}
+
+
+@app.post("/dock_ligand")
+async def dock_ligand(request: DockingRequest):
+    """
+    Perform molecular docking of a ligand to a protein structure.
+    
+    Input:
+    - protein_pdb: Protein structure in PDB format
+    - ligand_smiles, ligand_mol2, or ligand_pdb: Ligand structure
+    - tool: Docking tool to use (vina, diffdock, swissdock, rdock)
+    - center: Optional binding site center [x, y, z]
+    - size: Optional search space size [x, y, z]
+    
+    Returns:
+    - Docking results with binding poses and affinities
+    """
+    try:
+        center_tuple = tuple(request.center) if request.center else None
+        size_tuple = tuple(request.size) if request.size else (20, 20, 20)
+        
+        results = docking_service.dock_ligand(
+            protein_pdb=request.protein_pdb,
+            ligand_smiles=request.ligand_smiles,
+            ligand_mol2=request.ligand_mol2,
+            ligand_pdb=request.ligand_pdb,
+            tool=request.tool,
+            center=center_tuple,
+            size=size_tuple,
+            exhaustiveness=request.exhaustiveness or 8,
+            num_modes=request.num_modes or 9
+        )
+        
+        return results
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/docking_tools")
+async def get_docking_tools():
+    """Get list of available docking tools and their status."""
+    return docking_service.get_available_tools()
 

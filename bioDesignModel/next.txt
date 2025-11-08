@@ -1,0 +1,368 @@
+1. 3D Structure of the Complex
+The primary output is a PDB file showing how the two proteins interact spatially:
+pythonfrom Bio.PDB import PDBParser
+import numpy as np
+
+def analyze_complex_structure(pdb_file):
+    """Extract basic structural information from the complex."""
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("complex", pdb_file)
+    
+    chains = list(structure.get_chains())
+    
+    info = {
+        "num_chains": len(chains),
+        "chains": [chain.id for chain in chains],
+        "num_residues_per_chain": {}
+    }
+    
+    for chain in chains:
+        residues = list(chain.get_residues())
+        info["num_residues_per_chain"][chain.id] = len(residues)
+    
+    print(f"Complex has {info['num_chains']} chains: {info['chains']}")
+    print(f"Residues per chain: {info['num_residues_per_chain']}")
+    
+    return info
+
+# Usage
+info = analyze_complex_structure("multimer_prediction.pdb")
+2. Confidence Scores (pLDDT and PAE)
+pLDDT (per-residue confidence)
+Confidence score for each amino acid position (0-100):
+pythondef extract_plddt_scores(pdb_file):
+    """Extract confidence scores from B-factor column."""
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("complex", pdb_file)
+    
+    plddt_scores = {}
+    
+    for chain in structure.get_chains():
+        chain_scores = []
+        for residue in chain:
+            for atom in residue:
+                if atom.name == "CA":  # Alpha carbon
+                    chain_scores.append(atom.bfactor)
+                    break
+        plddt_scores[chain.id] = chain_scores
+    
+    # Analyze confidence
+    for chain_id, scores in plddt_scores.items():
+        avg_score = np.mean(scores)
+        print(f"Chain {chain_id}: Average pLDDT = {avg_score:.2f}")
+        print(f"  High confidence (>90): {sum(s > 90 for s in scores)} residues")
+        print(f"  Medium confidence (70-90): {sum(70 < s <= 90 for s in scores)} residues")
+        print(f"  Low confidence (<70): {sum(s < 70 for s in scores)} residues")
+    
+    return plddt_scores
+
+scores = extract_plddt_scores("multimer_prediction.pdb")
+PAE (Predicted Aligned Error)
+Shows confidence in relative positions between residues:
+pythonimport json
+import matplotlib.pyplot as plt
+
+def analyze_pae(pae_json_file):
+    """Analyze PAE matrix to assess interface confidence."""
+    with open(pae_json_file, 'r') as f:
+        pae_data = json.load(f)
+    
+    pae_matrix = np.array(pae_data['pae'])
+    
+    # Visualize PAE
+    plt.figure(figsize=(10, 8))
+    plt.imshow(pae_matrix, cmap='viridis_r', vmin=0, vmax=30)
+    plt.colorbar(label='Expected position error (Å)')
+    plt.xlabel('Residue')
+    plt.ylabel('Residue')
+    plt.title('Predicted Aligned Error (PAE)')
+    plt.savefig('pae_plot.png')
+    
+    # Lower PAE = higher confidence in relative positioning
+    avg_pae = np.mean(pae_matrix)
+    print(f"Average PAE: {avg_pae:.2f} Å")
+    
+    return pae_matrix
+
+pae_matrix = analyze_pae("pae_data.json")
+3. Interface Residues & Contacts
+Identify which residues are at the binding interface:
+pythonfrom Bio.PDB import NeighborSearch
+
+def find_interface_residues(pdb_file, distance_threshold=5.0):
+    """Find residues at the protein-protein interface."""
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("complex", pdb_file)
+    
+    chains = list(structure.get_chains())
+    if len(chains) != 2:
+        print("Warning: Expected 2 chains for interface analysis")
+        return None
+    
+    chain_a, chain_b = chains[0], chains[1]
+    
+    # Get all atoms
+    atoms_a = list(chain_a.get_atoms())
+    atoms_b = list(chain_b.get_atoms())
+    
+    # Use NeighborSearch to find close contacts
+    ns = NeighborSearch(atoms_a)
+    
+    interface_residues_a = set()
+    interface_residues_b = set()
+    contacts = []
+    
+    for atom_b in atoms_b:
+        close_atoms = ns.search(atom_b.coord, distance_threshold)
+        
+        if close_atoms:
+            interface_residues_b.add(atom_b.get_parent())
+            for atom_a in close_atoms:
+                interface_residues_a.add(atom_a.get_parent())
+                contacts.append((atom_a.get_parent(), atom_b.get_parent()))
+    
+    print(f"Chain {chain_a.id}: {len(interface_residues_a)} interface residues")
+    print(f"Chain {chain_b.id}: {len(interface_residues_b)} interface residues")
+    print(f"Total contacts: {len(contacts)}")
+    
+    # Get interface residue details
+    interface_info = {
+        'chain_a': {
+            'chain_id': chain_a.id,
+            'interface_residues': [
+                {'resname': r.resname, 'resid': r.id[1]} 
+                for r in interface_residues_a
+            ]
+        },
+        'chain_b': {
+            'chain_id': chain_b.id,
+            'interface_residues': [
+                {'resname': r.resname, 'resid': r.id[1]} 
+                for r in interface_residues_b
+            ]
+        }
+    }
+    
+    return interface_info
+
+interface = find_interface_residues("multimer_prediction.pdb")
+4. Binding Affinity Estimates
+Calculate interaction energy and buried surface area:
+pythonfrom Bio.PDB import SASA
+
+def calculate_interface_metrics(pdb_file):
+    """Calculate buried surface area and other metrics."""
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("complex", pdb_file)
+    
+    # Calculate SASA (Solvent Accessible Surface Area)
+    sasa_calculator = SASA.ShrakeRupley()
+    sasa_calculator.compute(structure, level="R")
+    
+    chains = list(structure.get_chains())
+    
+    # Calculate total SASA
+    total_sasa = {}
+    for chain in chains:
+        chain_sasa = sum(residue.sasa for residue in chain)
+        total_sasa[chain.id] = chain_sasa
+        print(f"Chain {chain.id} SASA: {chain_sasa:.2f} Ų")
+    
+    return total_sasa
+
+sasa = calculate_interface_metrics("multimer_prediction.pdb")
+5. Interaction Types
+Identify specific interaction types:
+pythondef analyze_interaction_types(pdb_file):
+    """Identify hydrogen bonds, salt bridges, hydrophobic contacts."""
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure("complex", pdb_file)
+    
+    chains = list(structure.get_chains())
+    chain_a, chain_b = chains[0], chains[1]
+    
+    interactions = {
+        'hydrogen_bonds': [],
+        'salt_bridges': [],
+        'hydrophobic': []
+    }
+    
+    # Simplified interaction detection
+    charged_residues = {'ARG', 'LYS', 'ASP', 'GLU', 'HIS'}
+    hydrophobic_residues = {'ALA', 'VAL', 'LEU', 'ILE', 'MET', 'PHE', 'TRP', 'PRO'}
+    
+    for res_a in chain_a:
+        for res_b in chain_b:
+            # Calculate distance between residues (C-alpha)
+            try:
+                ca_a = res_a['CA']
+                ca_b = res_b['CA']
+                distance = ca_a - ca_b
+                
+                if distance < 8.0:  # Potential interaction
+                    # Check for salt bridges
+                    if (res_a.resname in charged_residues and 
+                        res_b.resname in charged_residues):
+                        interactions['salt_bridges'].append({
+                            'res_a': f"{res_a.resname}{res_a.id[1]}",
+                            'res_b': f"{res_b.resname}{res_b.id[1]}",
+                            'distance': distance
+                        })
+                    
+                    # Check for hydrophobic contacts
+                    if (res_a.resname in hydrophobic_residues and 
+                        res_b.resname in hydrophobic_residues):
+                        interactions['hydrophobic'].append({
+                            'res_a': f"{res_a.resname}{res_a.id[1]}",
+                            'res_b': f"{res_b.resname}{res_b.id[1]}",
+                            'distance': distance
+                        })
+            except KeyError:
+                continue
+    
+    print(f"Salt bridges: {len(interactions['salt_bridges'])}")
+    print(f"Hydrophobic contacts: {len(interactions['hydrophobic'])}")
+    
+    return interactions
+
+interactions = analyze_interaction_types("multimer_prediction.pdb")
+6. ipTM Score (Interface Predicted TM-score)
+This is AlphaFold-Multimer's confidence in the overall interface:
+pythonimport json
+
+def get_iptm_score(ranking_json):
+    """Extract ipTM score from AlphaFold output."""
+    with open(ranking_json, 'r') as f:
+        data = json.load(f)
+    
+    # ipTM score indicates interface confidence
+    # Higher is better (0-1 scale)
+    for model_name, scores in data.items():
+        iptm = scores.get('iptm', None)
+        ptm = scores.get('ptm', None)
+        
+        print(f"Model: {model_name}")
+        print(f"  ipTM (interface confidence): {iptm:.3f}")
+        print(f"  pTM (overall structure confidence): {ptm:.3f}")
+        
+        # Interpretation
+        if iptm and iptm > 0.8:
+            print("  → High confidence interaction")
+        elif iptm and iptm > 0.5:
+            print("  → Moderate confidence interaction")
+        else:
+            print("  → Low confidence interaction")
+    
+    return data
+
+scores = get_iptm_score("ranking_debug.json")
+7. Complete Analysis Pipeline
+pythonclass ProteinComplexAnalyzer:
+    def __init__(self, pdb_file, pae_json=None, ranking_json=None):
+        self.pdb_file = pdb_file
+        self.pae_json = pae_json
+        self.ranking_json = ranking_json
+        self.parser = PDBParser(QUIET=True)
+        self.structure = self.parser.get_structure("complex", pdb_file)
+    
+    def full_analysis(self):
+        """Run complete interaction analysis."""
+        print("="*50)
+        print("PROTEIN-PROTEIN INTERACTION ANALYSIS")
+        print("="*50)
+        
+        # 1. Basic structure info
+        print("\n1. STRUCTURE OVERVIEW")
+        self.analyze_structure()
+        
+        # 2. Confidence scores
+        print("\n2. CONFIDENCE SCORES")
+        self.analyze_confidence()
+        
+        # 3. Interface analysis
+        print("\n3. INTERFACE ANALYSIS")
+        interface = self.find_interface()
+        
+        # 4. Interaction types
+        print("\n4. INTERACTION TYPES")
+        self.analyze_interactions()
+        
+        # 5. ipTM scores
+        if self.ranking_json:
+            print("\n5. INTERFACE CONFIDENCE (ipTM)")
+            self.get_iptm()
+        
+        return {
+            'structure': self.analyze_structure(),
+            'interface': interface,
+            'confidence': self.analyze_confidence()
+        }
+    
+    def analyze_structure(self):
+        chains = list(self.structure.get_chains())
+        print(f"Number of chains: {len(chains)}")
+        
+        for chain in chains:
+            residues = list(chain.get_residues())
+            print(f"  Chain {chain.id}: {len(residues)} residues")
+        
+        return len(chains)
+    
+    def analyze_confidence(self):
+        plddt_scores = {}
+        for chain in self.structure.get_chains():
+            scores = []
+            for residue in chain:
+                for atom in residue:
+                    if atom.name == "CA":
+                        scores.append(atom.bfactor)
+                        break
+            plddt_scores[chain.id] = np.mean(scores)
+            print(f"  Chain {chain.id} avg pLDDT: {plddt_scores[chain.id]:.2f}")
+        
+        return plddt_scores
+    
+    def find_interface(self, threshold=5.0):
+        chains = list(self.structure.get_chains())
+        if len(chains) < 2:
+            return None
+        
+        atoms_a = list(chains[0].get_atoms())
+        atoms_b = list(chains[1].get_atoms())
+        
+        ns = NeighborSearch(atoms_a)
+        
+        contacts = 0
+        for atom_b in atoms_b:
+            if ns.search(atom_b.coord, threshold):
+                contacts += 1
+        
+        print(f"  Interface contacts: {contacts}")
+        return contacts
+    
+    def analyze_interactions(self):
+        # Add interaction analysis here
+        print("  Analyzing hydrogen bonds, salt bridges, hydrophobic contacts...")
+        pass
+    
+    def get_iptm(self):
+        if not self.ranking_json:
+            return None
+        
+        with open(self.ranking_json, 'r') as f:
+            data = json.load(f)
+        
+        for model, scores in data.items():
+            print(f"  {model}: ipTM = {scores.get('iptm', 0):.3f}")
+
+# Usage
+analyzer = ProteinComplexAnalyzer(
+    "multimer_prediction.pdb",
+    pae_json="pae_data.json",
+    ranking_json="ranking_debug.json"
+)
+
+results = analyzer.full_analysis()
+8. Key Metrics Summary
+Here's what you can determine about the interaction:
+MetricWhat it tells youGood valueipTM scoreOverall interface confidence> 0.8pLDDTPer-residue structure confidence> 90PAE (interface region)Confidence in relative positioning< 5 ÅInterface contactsNumber of close residuesVariesBuried surface areaInteraction strengthLarger = strongerSalt bridgesElectrostatic interactionsMore = strongerH-bondsSpecific bindingCritical for specificity
