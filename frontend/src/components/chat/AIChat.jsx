@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, X, MinusCircle, Loader } from 'lucide-react';
+import { Send, Sparkles, X, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
-import GlassCard from '../shared/GlassCard';
 
 const AIChat = () => {
   const { isChatOpen, setIsChatOpen } = useProteinStore();
@@ -61,7 +60,7 @@ const AIChat = () => {
     return (
       <button
         onClick={() => setIsChatOpen(true)}
-        className="fixed bottom-6 right-6 px-6 py-3 bg-gradient-to-r from-neon-cyan to-neon-purple text-white rounded-full shadow-neon-cyan hover:shadow-neon-magenta transition-all duration-300 flex items-center space-x-2 z-50 animate-glow-pulse"
+        className="fixed bottom-6 right-6 px-6 py-3 bg-primary-600 text-white rounded-lg shadow-lg hover:bg-primary-700 transition-all flex items-center space-x-2 z-50"
       >
         <Sparkles className="w-5 h-5" />
         <span className="font-medium">Ask AI Assistant</span>
@@ -72,29 +71,28 @@ const AIChat = () => {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, x: 100 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 100 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
         className="fixed right-6 bottom-6 w-96 h-[600px] z-50"
       >
-        <GlassCard className="h-full flex flex-col p-0 overflow-hidden" neonBorder neonColor="purple">
+        <div className="bg-white rounded-lg border border-gray-200 shadow-xl h-full flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-dark-border bg-dark-elevated/50">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center space-x-2">
-              <div className="relative">
-                <Sparkles className="w-5 h-5 text-neon-purple" />
-                <div className="absolute inset-0 bg-neon-purple blur-md opacity-50"></div>
+              <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-primary-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-white">AI Assistant</h3>
-                <p className="text-xs text-gray-400">Powered by GPT-4</p>
+                <h3 className="font-semibold text-gray-900">AI Assistant</h3>
+                <p className="text-xs text-gray-600">Powered by GPT-4</p>
               </div>
             </div>
             <button
               onClick={() => setIsChatOpen(false)}
-              className="p-1 rounded-lg hover:bg-dark-hover transition-colors"
+              className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4 text-gray-600" />
             </button>
           </div>
 
@@ -106,10 +104,10 @@ const AIChat = () => {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-xl px-4 py-3 ${
+                  className={`max-w-[85%] rounded-lg px-4 py-3 ${
                     message.role === 'user'
-                      ? 'bg-gradient-to-r from-neon-cyan to-neon-blue text-white'
-                      : 'glass text-gray-200'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-900'
                   }`}
                 >
                   <p className="text-sm leading-relaxed">{message.content}</p>
@@ -119,9 +117,9 @@ const AIChat = () => {
 
             {isTyping && (
               <div className="flex justify-start">
-                <div className="glass rounded-xl px-4 py-3 flex items-center space-x-2">
-                  <Loader className="w-4 h-4 text-neon-purple animate-spin" />
-                  <span className="text-sm text-gray-400">Analyzing...</span>
+                <div className="bg-gray-100 rounded-lg px-4 py-3 flex items-center space-x-2">
+                  <Loader className="w-4 h-4 text-primary-600 animate-spin" />
+                  <span className="text-sm text-gray-600">Analyzing...</span>
                 </div>
               </div>
             )}
@@ -131,14 +129,14 @@ const AIChat = () => {
 
           {/* Suggested Questions */}
           {messages.length === 1 && (
-            <div className="px-4 pb-2">
-              <p className="text-xs text-gray-500 mb-2">Suggested questions:</p>
+            <div className="px-4 pb-3 border-t border-gray-200 pt-3 bg-gray-50">
+              <p className="text-xs text-gray-600 mb-2 font-medium">Suggested questions:</p>
               <div className="grid grid-cols-2 gap-2">
                 {suggestedQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => setInput(question)}
-                    className="text-xs text-left px-3 py-2 rounded-lg bg-dark-surface hover:bg-dark-hover border border-dark-border hover:border-neon-purple/50 transition-all duration-300 text-gray-300"
+                    className="text-xs text-left px-3 py-2 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 hover:border-primary-300 transition-all text-gray-700"
                   >
                     {question}
                   </button>
@@ -148,26 +146,26 @@ const AIChat = () => {
           )}
 
           {/* Input */}
-          <div className="p-4 border-t border-dark-border bg-dark-elevated/50">
+          <div className="p-4 border-t border-gray-200 bg-white">
             <div className="flex items-end space-x-2">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask about proteins, structure, or function..."
-                className="flex-1 bg-dark-surface rounded-lg px-4 py-3 text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-neon-purple resize-none"
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                 rows="2"
               />
               <button
                 onClick={handleSend}
                 disabled={!input.trim()}
-                className="p-3 rounded-lg bg-gradient-to-r from-neon-purple to-neon-magenta text-white hover:shadow-neon-purple transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-3 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="w-5 h-5" />
               </button>
             </div>
           </div>
-        </GlassCard>
+        </div>
       </motion.div>
     </AnimatePresence>
   );

@@ -13,35 +13,35 @@ const ViewerControls = () => {
   ];
 
   const colorSchemes = [
-    { id: 'spectrum', name: 'Spectrum', color: 'linear-gradient(90deg, #00f0ff, #ff00ff)' },
-    { id: 'confidence', name: 'Confidence', color: 'linear-gradient(90deg, #ff0000, #00ff88)' },
-    { id: 'chain', name: 'Chain', color: 'linear-gradient(90deg, #00f0ff, #b000ff)' },
-    { id: 'secondary', name: 'Secondary', color: 'linear-gradient(90deg, #ffaa00, #00f0ff)' },
+    { id: 'spectrum', name: 'Spectrum' },
+    { id: 'confidence', name: 'Confidence' },
+    { id: 'chain', name: 'Chain' },
+    { id: 'secondary', name: 'Secondary' },
   ];
 
   return (
-    <div className="flex items-center space-x-6">
+    <div className="flex items-center space-x-6 bg-white px-4 py-3 rounded-lg border border-gray-200">
       {/* Render Style */}
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-gray-400 flex items-center">
+      <div className="flex items-center space-x-3">
+        <span className="text-sm text-gray-600 flex items-center font-medium">
           <Box className="w-4 h-4 mr-2" />
           Style:
         </span>
-        <div className="flex space-x-1 glass rounded-lg p-1">
+        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
           {styles.map((style) => {
             const Icon = style.icon;
             return (
               <button
                 key={style.id}
                 onClick={() => setRenderStyle(style.id)}
-                className={`px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 flex items-center space-x-1 ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center space-x-1.5 ${
                   renderStyle === style.id
-                    ? 'bg-neon-cyan/20 text-neon-cyan shadow-neon-cyan'
-                    : 'text-gray-400 hover:text-white hover:bg-dark-hover'
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
                 title={style.name}
               >
-                <Icon className="w-3 h-3" />
+                <Icon className="w-3.5 h-3.5" />
                 <span>{style.name}</span>
               </button>
             );
@@ -50,28 +50,24 @@ const ViewerControls = () => {
       </div>
 
       {/* Color Scheme */}
-      <div className="flex items-center space-x-2">
-        <span className="text-sm text-gray-400 flex items-center">
+      <div className="flex items-center space-x-3">
+        <span className="text-sm text-gray-600 flex items-center font-medium">
           <Palette className="w-4 h-4 mr-2" />
           Color:
         </span>
-        <div className="flex space-x-2 glass rounded-lg p-1">
+        <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
           {colorSchemes.map((scheme) => (
             <button
               key={scheme.id}
               onClick={() => setColorScheme(scheme.id)}
-              className={`px-3 py-2 rounded-md text-xs font-medium transition-all duration-300 relative overflow-hidden ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 colorScheme === scheme.id
-                  ? 'ring-2 ring-neon-cyan shadow-glow'
-                  : 'hover:ring-1 ring-gray-600'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
               title={scheme.name}
             >
-              <div
-                className="absolute inset-0 opacity-30"
-                style={{ background: scheme.color }}
-              />
-              <span className="relative text-white">{scheme.name}</span>
+              {scheme.name}
             </button>
           ))}
         </div>

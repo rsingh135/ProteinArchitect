@@ -15,21 +15,21 @@ const MolecularViewer = ({
         width,
         height,
         position: 'relative',
-        borderRadius: '12px',
+        borderRadius: '8px',
         overflow: 'hidden',
-        backgroundColor: '#12121a',
+        backgroundColor: '#f9fafb',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}
-      className="border border-dark-border shadow-glow"
+      className="border border-gray-200"
     >
-      <div style={{ textAlign: 'center', color: '#666' }}>
-        <div style={{ fontSize: '48px', marginBottom: '10px' }}>🧬</div>
-        <div style={{ fontSize: '14px', color: '#888' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '12px' }}>🧬</div>
+        <div style={{ fontSize: '14px', color: '#4b5563', fontWeight: '500' }}>
           3D Molecular Viewer
         </div>
-        <div style={{ fontSize: '12px', color: '#666', marginTop: '8px' }}>
+        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
           {style} | {colorScheme}
         </div>
       </div>
