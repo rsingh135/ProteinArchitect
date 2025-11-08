@@ -4,10 +4,12 @@ import { Layers, Link2, Eye, Maximize2 } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import ViewerControls from './ViewerControls';
 import ProteinOverview from '../shared/ProteinOverview';
+import ProteinViewerModal from './ProteinViewerModal';
 import { useProteinStore } from '../../store/proteinStore';
 
 const DualViewer = () => {
   const {
+    targetProtein,
     viewMode,
     syncRotation,
     renderStyle,
@@ -18,6 +20,7 @@ const DualViewer = () => {
 
   const [leftViewer, setLeftViewer] = useState(null);
   const [rightViewer, setRightViewer] = useState(null);
+  const [expandedViewer, setExpandedViewer] = useState(null);
 
   const toggleViewMode = () => {
     setViewMode(viewMode === 'split' ? 'overlay' : 'split');
@@ -83,17 +86,28 @@ const DualViewer = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Target Protein</h3>
               <p className="text-sm text-gray-600 mt-1">
-                UniProt ID: <span className="font-mono text-primary-600">P01308</span>
+                {targetProtein ? (
+                  <>
+                    UniProt ID: <span className="font-mono text-primary-600">{targetProtein.uniprotId}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-400">Search to load a protein</span>
+                )}
               </p>
             </div>
-            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => setExpandedViewer('target')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              disabled={!targetProtein}
+              aria-label="Expand target protein viewer"
+            >
               <Maximize2 className="w-4 h-4 text-gray-600" />
             </button>
           </div>
 
           <div className="flex-1 relative">
             <MolecularViewer
-              pdbData={null}
+              pdbData={targetProtein?.pdbData || null}
               style={renderStyle}
               colorScheme={colorScheme}
               height="100%"
@@ -101,29 +115,46 @@ const DualViewer = () => {
             />
 
             {/* Confidence Badge */}
-            <div className="absolute top-4 left-4 px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-xs text-gray-900 font-medium">
-                  Confidence: <span className="text-green-600">92%</span>
-                </span>
+            {targetProtein && (
+              <div className="absolute top-4 left-4 px-3 py-2 rounded-lg bg-white border border-gray-200 shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    targetProtein.metrics.plddt >= 70 ? 'bg-green-500' : 
+                    targetProtein.metrics.plddt >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></div>
+                  <span className="text-xs text-gray-900 font-medium">
+                    Confidence: <span className={
+                      targetProtein.metrics.plddt >= 70 ? 'text-green-600' : 
+                      targetProtein.metrics.plddt >= 50 ? 'text-yellow-600' : 'text-red-600'
+                    }>{targetProtein.metrics.plddt.toFixed(0)}%</span>
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Quick Stats */}
           <div className="mt-4 grid grid-cols-3 gap-3">
             <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
               <div className="text-xs text-gray-600 mb-1">Length</div>
-              <div className="text-sm font-semibold text-gray-900">245 aa</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {targetProtein ? `${targetProtein.sequence.length} aa` : '--- aa'}
+              </div>
             </div>
             <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
               <div className="text-xs text-gray-600 mb-1">Mass</div>
-              <div className="text-sm font-semibold text-gray-900">27.5 kDa</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {targetProtein ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
+              </div>
             </div>
             <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
               <div className="text-xs text-gray-600 mb-1">pLDDT</div>
-              <div className="text-sm font-semibold text-green-600">92.3</div>
+              <div className={`text-sm font-semibold ${
+                targetProtein && targetProtein.metrics.plddt >= 70 ? 'text-green-600' : 
+                targetProtein && targetProtein.metrics.plddt >= 50 ? 'text-yellow-600' : 'text-gray-400'
+              }`}>
+                {targetProtein ? targetProtein.metrics.plddt.toFixed(1) : '--'}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -142,7 +173,12 @@ const DualViewer = () => {
                 Click search to add a binding partner
               </p>
             </div>
-            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => setExpandedViewer('partner')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              disabled={true}
+              aria-label="Expand partner protein viewer"
+            >
               <Maximize2 className="w-4 h-4 text-gray-600" />
             </button>
           </div>
@@ -193,6 +229,25 @@ const DualViewer = () => {
 
       {/* Right Sidebar - Protein Overview with PPI */}
       <ProteinOverview showPPISuggestions={true} />
+
+      {/* Modals */}
+      <ProteinViewerModal
+        isOpen={expandedViewer === 'target'}
+        onClose={() => setExpandedViewer(null)}
+        protein={targetProtein}
+        title="Target Protein"
+        colorScheme={colorScheme}
+        renderStyle={renderStyle}
+      />
+
+      <ProteinViewerModal
+        isOpen={expandedViewer === 'partner'}
+        onClose={() => setExpandedViewer(null)}
+        protein={null}
+        title="Partner/Binder"
+        colorScheme={colorScheme}
+        renderStyle={renderStyle}
+      />
     </div>
   );
 };

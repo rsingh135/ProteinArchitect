@@ -107,11 +107,12 @@ const AIChat = () => {
                 <div
                   className={`max-w-[85%] rounded-lg px-4 py-3 ${
                     message.role === 'user'
-                      ? 'bg-primary-600 text-white'
+                      ? 'text-white'
                       : 'bg-gray-100 text-gray-900'
                   }`}
+                  style={message.role === 'user' ? { backgroundColor: '#0284c7' } : {}}
                 >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-sm leading-relaxed font-medium">{message.content}</p>
                 </div>
               </div>
             ))}
@@ -131,13 +132,13 @@ const AIChat = () => {
           {/* Suggested Questions */}
           {messages.length === 1 && (
             <div className="px-4 pb-3 border-t border-gray-200 pt-3 bg-gray-50">
-              <p className="text-xs text-gray-600 mb-2 font-medium">Suggested questions:</p>
+              <p className="text-xs text-gray-700 mb-2 font-semibold">Suggested questions:</p>
               <div className="grid grid-cols-2 gap-2">
                 {suggestedQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => setInput(question)}
-                    className="text-xs text-left px-3 py-2 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 hover:border-primary-300 transition-all text-gray-700"
+                    className="text-xs text-left px-3 py-2 rounded-lg bg-white hover:bg-gray-100 border border-gray-200 hover:border-primary-300 transition-all text-gray-900"
                   >
                     {question}
                   </button>
@@ -154,7 +155,7 @@ const AIChat = () => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask about proteins, structure, or function..."
-                className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                className="flex-1 bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-600 outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none font-medium"
                 rows="2"
               />
               <button
