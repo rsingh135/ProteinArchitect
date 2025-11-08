@@ -11,6 +11,12 @@ ENV/
 *.egg-info/
 dist/
 build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+.tox/
 
 # Node
 node_modules/
@@ -21,48 +27,182 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 lerna-debug.log*
+.npm
+.yarn/
+.yarn-integrity
 
 # Build outputs
 dist/
 build/
+out/
+.next/
 
-# Environment variables
+# Environment variables - CRITICAL: Never commit these!
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 .env.*.local
+.env.*
+*.env
+!.env.example
+!.env.template
+!**/.env.example
 
-# IDE
+# API Keys and Secrets - CRITICAL: Never commit these!
+*_key.txt
+*_keys.txt
+*_secret.txt
+*_secrets.txt
+*_credential*.txt
+*_credentials*.txt
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+secrets.json
+config.json
+!config.example.json
+
+# AWS Credentials - CRITICAL: Never commit these!
+.aws/
+aws-credentials
+aws_config
+*.aws
+.awscli/
+
+# SSH Keys - CRITICAL: Never commit these!
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+known_hosts
+authorized_keys
+*.ppk
+GenLab
+GenLab.pub
+*.pub
+!*.example.pub
+
+# IDE and Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
 
 # Vite
 .vite/
+.cache/
 
-# OS
+# OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Logs
 *.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Coverage
 .coverage
 htmlcov/
+.coverage.*
 coverage/
+*.cover
+.hypothesis/
 
-# Jupyter
+# Jupyter Notebooks
 .ipynb_checkpoints/
+*.ipynb
+!*.example.ipynb
 
-# Testing
-.pytest_cache/
-.coverage
+# Model files (can be large - uncomment if you want to exclude)
+# *.pth
+# *.pt
+# *.h5
+# *.ckpt
+# *.pkl
+# !embeddings_cache.pkl.example
+# model.pth
+# embeddings_cache.pkl
 
-# SSH Keys (if any)
-GenLab
-GenLab.pub
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+.cache/
+
+# Package manager locks (optional - some teams commit these)
+# package-lock.json
+# yarn.lock
+# Pipfile.lock
+
+# Python virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Python type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMaker
+*.model
+*.sagemaker
+.sagemaker/
+
+# Docker
+.dockerignore
+
+# MLflow
+mlruns/
+
+# Weights & Biases
+wandb/
+
+# Other
+*.orig
+.directory

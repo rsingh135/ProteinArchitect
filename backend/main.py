@@ -8,13 +8,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 import os
+import logging
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from services.protein_generator import ProteinGenerator
 from services.oracle import ExpressibilityOracle
 from services.manufacturing_agent import ManufacturingAgent
 from services.llm_agent import LLMAgent
 from services.docking_service import DockingService
+from services.gemini_service import GeminiProteinSearchService
+from services.ppi_service import PPIService
 
 load_dotenv()
 
@@ -35,6 +41,17 @@ oracle = ExpressibilityOracle()
 manufacturing_agent = ManufacturingAgent()
 llm_agent = LLMAgent()
 docking_service = DockingService()
+
+# Initialize PPI services
+try:
+    gemini_service = GeminiProteinSearchService()
+except Exception as e:
+    print(f"Warning: Could not initialize Gemini service: {e}")
+    gemini_service = None
+
+# Initialize PPI prediction service (use local for development, SageMaker for production)
+use_local_ppi = os.getenv("USE_LOCAL_PPI", "true").lower() == "true"
+ppi_service = PPIService(use_local=use_local_ppi)
 
 # Global counter for retraining trigger
 protein_generation_count = 0
@@ -65,6 +82,16 @@ class DockingRequest(BaseModel):
     num_modes: Optional[int] = 9
 
 
+class ProteinSearchRequest(BaseModel):
+    query: str
+    max_results: Optional[int] = 5
+
+
+class PPIPredictionRequest(BaseModel):
+    protein_a: str  # UniProt ID
+    protein_b: str  # UniProt ID
+
+
 @app.get("/")
 async def root():
     return {
@@ -75,6 +102,8 @@ async def root():
             "/refine_protein",
             "/dock_ligand",
             "/docking_tools",
+            "/search_proteins",
+            "/predict_ppi",
             "/health"
         ]
     }
@@ -202,4 +231,65 @@ async def dock_ligand(request: DockingRequest):
 async def get_docking_tools():
     """Get list of available docking tools and their status."""
     return docking_service.get_available_tools()
+
+
+@app.post("/search_proteins")
+async def search_proteins(request: ProteinSearchRequest):
+    """
+    Search for proteins using natural language query (Gemini API)
+    
+    Returns list of candidate proteins with UniProt IDs
+    """
+    try:
+        if not gemini_service:
+            raise HTTPException(
+                status_code=503, 
+                detail="Gemini service not available. Please set GEMINI_API_KEY environment variable."
+            )
+        
+        results = gemini_service.search_proteins(
+            query=request.query,
+            max_results=request.max_results or 5
+        )
+        
+        return {
+            "query": request.query,
+            "results": results,
+            "count": len(results)
+        }
+    
+    except Exception as e:
+        logger.error(f"Error in protein search: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict_ppi")
+async def predict_ppi(request: PPIPredictionRequest):
+    """
+    Predict protein-protein interaction between two proteins
+    
+    Args:
+        protein_a: UniProt ID of first protein
+        protein_b: UniProt ID of second protein
+    
+    Returns:
+        Prediction results with interaction probability, confidence, and type
+    """
+    try:
+        # Validate protein IDs (basic check)
+        if not request.protein_a or not request.protein_b:
+            raise HTTPException(status_code=400, detail="Both protein_a and protein_b are required")
+        
+        # Make prediction
+        prediction = ppi_service.predict(request.protein_a, request.protein_b)
+        
+        # Add metadata
+        prediction["protein_a"] = request.protein_a
+        prediction["protein_b"] = request.protein_b
+        
+        return prediction
+    
+    except Exception as e:
+        logger.error(f"Error in PPI prediction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 

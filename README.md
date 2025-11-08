@@ -4,6 +4,145 @@
 
 An **Agentic, Closed-Loop Generative Platform** that designs and optimizes therapeutic protein sequences for function, stability, and large-scale industrial manufacturability.
 
+---
+
+## ⚙️ Configuration & Setup (REQUIRED BEFORE RUNNING)
+
+### 🔐 Step 1: Configure API Keys and Environment Variables
+
+**CRITICAL**: You must set up API keys before running the application. Follow these steps:
+
+1. **Create Environment File**:
+   ```bash
+   cd backend
+   cp .env.example .env
+   ```
+
+2. **Get API Keys** (Required):
+   
+   **Gemini API Key** (Required for Protein Search):
+   - Visit: https://makersuite.google.com/app/apikey
+   - Create a new API key
+   - Copy the key
+   
+   **OpenAI API Key** (Optional - for LLM refinement):
+   - Visit: https://platform.openai.com/api-keys
+   - Create a new API key
+   - Copy the key
+   
+   **AWS Credentials** (Required for SageMaker deployment):
+   - Visit: https://console.aws.amazon.com/iam/
+   - Create access keys
+   - Copy Access Key ID and Secret Access Key
+
+3. **Edit `.env` File**:
+   ```bash
+   # Open backend/.env in your editor
+   nano backend/.env
+   # or
+   code backend/.env
+   ```
+
+4. **Fill in Your Keys**:
+   ```bash
+   # Required
+   GEMINI_API_KEY=your_actual_gemini_api_key_here
+   
+   # Optional (for LLM refinement)
+   OPENAI_API_KEY=your_actual_openai_api_key_here
+   
+   # Required for SageMaker (if deploying)
+   AWS_ACCESS_KEY_ID=your_aws_access_key_id
+   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+   AWS_REGION=us-east-1
+   SAGEMAKER_PPI_ENDPOINT=protein-ppi-endpoint
+   
+   # Development mode (uses local service instead of SageMaker)
+   USE_LOCAL_PPI=true
+   ```
+
+5. **Verify Configuration**:
+   ```bash
+   # Check that .env is in .gitignore (should be)
+   cat .gitignore | grep .env
+   
+   # Verify .env file is NOT tracked by git
+   git status | grep .env
+   # Should return nothing (file should not appear)
+   ```
+
+### 🚨 Security Checklist
+
+Before committing code, verify:
+- [ ] `.env` file is in `.gitignore`
+- [ ] `.env` file is NOT committed to git
+- [ ] API keys are kept secret and never shared
+- [ ] Different keys used for development vs production
+- [ ] Keys are rotated regularly
+
+**Quick Security Check**:
+```bash
+# Run the security check script
+./check_security.sh
+
+# Or manually check:
+git status | grep .env  # Should return nothing
+git ls-files | grep .env  # Should only show .env.example
+```
+
+### 📋 Quick Setup Summary
+
+```bash
+# 1. Clone repository
+git clone <your-repo-url>
+cd GenLab
+
+# 2. Set up backend environment
+cd backend
+cp .env.example .env
+# Edit .env with your API keys (see above)
+
+# 3. Install backend dependencies
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# 4. Set up frontend
+cd ../frontend
+npm install
+
+# 5. Start backend (in one terminal)
+cd ../backend
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+
+# 6. Start frontend (in another terminal)
+cd frontend
+npm run dev
+```
+
+### 🆘 Troubleshooting
+
+**Error: "Gemini service not available"**
+- Check that `GEMINI_API_KEY` is set in `.env`
+- Verify the API key is correct
+- Check that `.env` file is in the `backend/` directory
+
+**Error: "SageMaker endpoint not found"**
+- Set `USE_LOCAL_PPI=true` for local development
+- Or deploy model to SageMaker and set `SAGEMAKER_PPI_ENDPOINT`
+
+**Error: "Module not found"**
+- Make sure virtual environment is activated
+- Run `pip install -r requirements.txt` again
+
+**Environment variables not loading**
+- Ensure `.env` file is in `backend/` directory
+- Check file is named exactly `.env` (not `env` or `.env.txt`)
+- Restart the backend server after changing `.env`
+
+---
+
 ## 🎯 Problem Solved: The Expressibility Cliff
 
 The major bottleneck in biologics development is that AI-designed proteins often misfold, are unstable, or are impossible to produce at high yield in a bioreactor. This system guarantees that designs are viable for commercial production.
@@ -82,13 +221,21 @@ pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-3. Optional: Create a `.env` file for API keys:
-```bash
-OPENAI_API_KEY=your_openai_api_key_here
-AWS_ACCESS_KEY_ID=your_aws_access_key_here
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
-AWS_REGION=us-east-1
-```
+3. **Configure Environment Variables** (REQUIRED):
+   ```bash
+   # Copy the example file
+   cp .env.example .env
+   
+   # Edit .env and add your API keys
+   # See "Configuration & Setup" section at top of README for details
+   ```
+   
+   **Required API Keys**:
+   - `GEMINI_API_KEY` - Get from https://makersuite.google.com/app/apikey
+   - `OPENAI_API_KEY` - Get from https://platform.openai.com/api-keys (optional)
+   - `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` - For SageMaker deployment
+   
+   **Important**: Never commit `.env` to git! It's already in `.gitignore`.
 
 4. Start the backend server:
 ```bash

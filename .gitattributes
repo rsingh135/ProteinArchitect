@@ -1,0 +1,38 @@
+# Git Attributes
+# Ensure .env files are never committed, even if accidentally added
+
+# Treat .env files as binary to prevent accidental commits
+*.env filter=git-crypt diff=git-crypt
+.env filter=git-crypt diff=git-crypt
+
+# But allow .env.example
+!.env.example
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout
+*.py text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sh text eol=lf
+
+# Denote all files that are truly binary and should not be modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.pth binary
+*.pt binary
+*.pkl binary
+*.h5 binary
+

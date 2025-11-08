@@ -10,13 +10,24 @@ pydantic>=2.5.0
 # Scientific computing - using newer versions with Python 3.13 support
 numpy>=1.26.0
 scikit-learn>=1.3.2
+torch>=2.0.0
+pandas>=2.0.0
 
 # API clients
 openai>=1.3.0
+google-generativeai>=0.3.0
 boto3>=1.29.0
 httpx>=0.25.2
+requests>=2.31.0
+
+# ML/AI libraries
+fair-esm>=2.0.0
+transformers>=4.30.0
+tqdm>=4.65.0
 
 # Utilities
 python-dotenv>=1.0.0
 biopython>=1.81
+flask>=2.3.0
+gunicorn>=21.2.0
 
