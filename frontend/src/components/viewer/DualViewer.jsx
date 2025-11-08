@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Link2, Eye, Maximize2 } from 'lucide-react';
+import { Layers, Link2, Eye, Maximize2, ExternalLink, ChevronRight, Dna } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import ViewerControls from './ViewerControls';
 import { useProteinStore } from '../../store/proteinStore';
@@ -26,49 +26,59 @@ const DualViewer = () => {
     setSyncRotation(!syncRotation);
   };
 
+  // Mock PPI suggestions
+  const ppiSuggestions = [
+    { id: 'P01308', name: 'Insulin Receptor', confidence: 0.98, source: 'STRING' },
+    { id: 'P62942', name: 'Fructose-1,6-bisphosphatase', confidence: 0.85, source: 'BioGRID' },
+    { id: 'P00533', name: 'EGFR', confidence: 0.78, source: 'IntAct' },
+    { id: 'P04626', name: 'ErbB2', confidence: 0.72, source: 'STRING' },
+  ];
+
   return (
-    <div className="h-full flex flex-col p-6 space-y-4 bg-gray-50">
-      {/* Top Controls */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-          <Layers className="w-5 h-5 mr-2 text-gray-700" />
-          3D Structure Viewer
-        </h2>
+    <div className="h-full flex bg-gray-50">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col p-6 space-y-4 overflow-hidden">
+        {/* Top Controls */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+            <Layers className="w-5 h-5 mr-2 text-gray-700" />
+            3D Structure Viewer
+          </h2>
 
-        <div className="flex items-center space-x-3">
-          {/* Sync Toggle */}
-          <button
-            onClick={toggleSync}
-            className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-all text-sm font-medium ${
-              syncRotation
-                ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <Link2 className="w-4 h-4" />
-            <span>{syncRotation ? 'Synced' : 'Independent'}</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            {/* Sync Toggle */}
+            <button
+              onClick={toggleSync}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-all text-sm font-medium ${
+                syncRotation
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <Link2 className="w-4 h-4" />
+              <span>{syncRotation ? 'Synced' : 'Independent'}</span>
+            </button>
 
-          {/* View Mode Toggle */}
-          <button
-            onClick={toggleViewMode}
-            className="px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 transition-all flex items-center space-x-2 text-gray-700 text-sm font-medium"
-          >
-            {viewMode === 'split' ? (
-              <Eye className="w-4 h-4" />
-            ) : (
-              <Layers className="w-4 h-4" />
-            )}
-            <span>{viewMode === 'split' ? 'Split View' : 'Overlay'}</span>
-          </button>
+            {/* View Mode Toggle */}
+            <button
+              onClick={toggleViewMode}
+              className="px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 transition-all flex items-center space-x-2 text-gray-700 text-sm font-medium"
+            >
+              {viewMode === 'split' ? (
+                <Eye className="w-4 h-4" />
+              ) : (
+                <Layers className="w-4 h-4" />
+              )}
+              <span>{viewMode === 'split' ? 'Split View' : 'Overlay'}</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Viewer Controls */}
-      <ViewerControls />
+        {/* Color Controls Only */}
+        <ViewerControls />
 
-      {/* Dual Viewer Area */}
-      <div className="flex-1 grid grid-cols-2 gap-6">
+        {/* Dual Viewer Area */}
+        <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
         {/* Left Viewer - Target Protein */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
