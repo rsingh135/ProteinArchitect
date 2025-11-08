@@ -4,6 +4,7 @@ import { Layers, Link2, Eye, Maximize2 } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import ViewerControls from './ViewerControls';
 import ProteinOverview from '../shared/ProteinOverview';
+import ProteinViewerModal from './ProteinViewerModal';
 import { useProteinStore } from '../../store/proteinStore';
 
 const DualViewer = () => {
@@ -19,6 +20,7 @@ const DualViewer = () => {
 
   const [leftViewer, setLeftViewer] = useState(null);
   const [rightViewer, setRightViewer] = useState(null);
+  const [expandedViewer, setExpandedViewer] = useState(null);
 
   const toggleViewMode = () => {
     setViewMode(viewMode === 'split' ? 'overlay' : 'split');
@@ -93,7 +95,12 @@ const DualViewer = () => {
                 )}
               </p>
             </div>
-            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => setExpandedViewer('target')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              disabled={!targetProtein}
+              aria-label="Expand target protein viewer"
+            >
               <Maximize2 className="w-4 h-4 text-gray-600" />
             </button>
           </div>
@@ -166,7 +173,12 @@ const DualViewer = () => {
                 Click search to add a binding partner
               </p>
             </div>
-            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => setExpandedViewer('partner')}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              disabled={true}
+              aria-label="Expand partner protein viewer"
+            >
               <Maximize2 className="w-4 h-4 text-gray-600" />
             </button>
           </div>
@@ -217,6 +229,25 @@ const DualViewer = () => {
 
       {/* Right Sidebar - Protein Overview with PPI */}
       <ProteinOverview showPPISuggestions={true} />
+
+      {/* Modals */}
+      <ProteinViewerModal
+        isOpen={expandedViewer === 'target'}
+        onClose={() => setExpandedViewer(null)}
+        protein={targetProtein}
+        title="Target Protein"
+        colorScheme={colorScheme}
+        renderStyle={renderStyle}
+      />
+
+      <ProteinViewerModal
+        isOpen={expandedViewer === 'partner'}
+        onClose={() => setExpandedViewer(null)}
+        protein={null}
+        title="Partner/Binder"
+        colorScheme={colorScheme}
+        renderStyle={renderStyle}
+      />
     </div>
   );
 };
