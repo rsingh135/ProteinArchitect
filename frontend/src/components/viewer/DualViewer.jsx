@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Link2, Eye, Maximize2, ExternalLink, ChevronRight, Dna } from 'lucide-react';
+import { Layers, Link2, Eye, Maximize2 } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import ViewerControls from './ViewerControls';
+import ProteinOverview from '../shared/ProteinOverview';
 import { useProteinStore } from '../../store/proteinStore';
 
 const DualViewer = () => {
@@ -25,14 +26,6 @@ const DualViewer = () => {
   const toggleSync = () => {
     setSyncRotation(!syncRotation);
   };
-
-  // Mock PPI suggestions
-  const ppiSuggestions = [
-    { id: 'P01308', name: 'Insulin Receptor', confidence: 0.98, source: 'STRING' },
-    { id: 'P62942', name: 'Fructose-1,6-bisphosphatase', confidence: 0.85, source: 'BioGRID' },
-    { id: 'P00533', name: 'EGFR', confidence: 0.78, source: 'IntAct' },
-    { id: 'P04626', name: 'ErbB2', confidence: 0.72, source: 'STRING' },
-  ];
 
   return (
     <div className="h-full flex bg-gray-50">
@@ -195,7 +188,11 @@ const DualViewer = () => {
             </div>
           </div>
         </motion.div>
+        </div>
       </div>
+
+      {/* Right Sidebar - Protein Overview with PPI */}
+      <ProteinOverview showPPISuggestions={true} />
     </div>
   );
 };

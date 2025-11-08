@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, Zap, Activity, Target } from 'lucide-react';
 import ConfidencePanel from './ConfidencePanel';
 import PAEPlot from './PAEPlot';
+import ProteinOverview from '../shared/ProteinOverview';
 
 const AnalysisDashboard = () => {
   const quickStats = [
@@ -124,116 +125,8 @@ const AnalysisDashboard = () => {
         </div>
       </div>
 
-      {/* Right Sidebar - Protein Info & AI Insights */}
-      <div className="w-96 border-l border-gray-200 bg-white overflow-y-auto">
-        <div className="p-6 space-y-6">
-          {/* Protein Overview */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Protein Overview</h3>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-gray-600 mb-1">Name</p>
-                <p className="text-sm font-semibold text-gray-900">Human Insulin</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 mb-1">UniProt ID</p>
-                <p className="text-sm font-mono text-primary-600">P01308</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 mb-1">Organism</p>
-                <p className="text-sm text-gray-900 italic">Homo sapiens</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600 mb-1">Function</p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Insulin decreases blood glucose concentration. It increases cell permeability to monosaccharides, amino acids and fatty acids.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Sequence Preview */}
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">Sequence</h3>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <p className="text-xs font-mono text-gray-700 leading-relaxed break-all">
-                MALWMRLLPL LALLALWGPD PAAAFVNQHL CGSHLVEALY LVCGERGFFY TPKTRREAED LQVGQVELGG GPGAGSLQPL ALEGSLQKRG IVEQCCTSIC SLYQLENYCN
-              </p>
-              <p className="text-xs text-gray-500 mt-2">110 amino acids</p>
-            </div>
-          </div>
-
-          {/* AI Insights */}
-          <div className="pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">AI Insights</h3>
-              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">GPT-4</span>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-100">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">🧬 Key Structural Features</h4>
-                <ul className="text-sm text-gray-700 space-y-1.5">
-                  <li className="flex items-start">
-                    <span className="text-purple-600 mr-2">•</span>
-                    <span>Contains 3 disulfide bonds critical for stability</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-purple-600 mr-2">•</span>
-                    <span>High α-helix content (~50%) indicates strong secondary structure</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-purple-600 mr-2">•</span>
-                    <span>Conserved binding pocket shows 98% sequence identity across mammals</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">💡 Therapeutic Potential</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  The predicted structure shows excellent druggability with 2 distinct binding pockets. Consider targeting residues 23-45 for small molecule inhibitors.
-                </p>
-              </div>
-
-              <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">⚠️ Mutation Hotspots</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Residues R67 and K112 are mutation-sensitive. 12 known pathogenic variants affect binding affinity by &gt;50%.
-                </p>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">✓ Quality Assessment</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  Model confidence is excellent (92.3% pLDDT). Core regions show very high reliability. Interface predictions are trustworthy for experimental validation.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* External Links */}
-          <div className="pt-6 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 uppercase tracking-wide">External Resources</h3>
-            <div className="space-y-2">
-              {[
-                { name: 'UniProt', url: 'P01308' },
-                { name: 'AlphaFold DB', url: 'P01308' },
-                { name: 'PDB', url: '1A7F' },
-                { name: 'KEGG', url: 'hsa:3630' },
-              ].map((link, index) => (
-                <a
-                  key={index}
-                  href="#"
-                  className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors text-sm text-gray-900 border border-gray-200"
-                >
-                  <span className="font-medium">{link.name}</span>
-                  <span className="text-xs font-mono text-gray-500">{link.url}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Right Sidebar - Protein Overview with AI Insights */}
+      <ProteinOverview showPPISuggestions={false} />
     </div>
   );
 };
