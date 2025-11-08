@@ -7,6 +7,8 @@ const MolecularViewer = ({
   width = '100%',
   height = '600px',
   onViewerReady,
+  onResidueSelect,
+  onViewerStateChange,
 }) => {
   const viewerRef = useRef(null);
   const viewerInstanceRef = useRef(null);
@@ -62,12 +64,17 @@ const MolecularViewer = ({
               resn: atom.resn,
               atom: atom.atom,
             };
-            
+
             setSelectedResidue(residueInfo);
-            
+
+            // Notify parent component if callback provided
+            if (onResidueSelect) {
+              onResidueSelect(residueInfo);
+            }
+
             // Highlight selected residue
             highlightResidue(viewer, atom.chain, atom.resi);
-            
+
             console.log('Selected:', residueInfo);
           }
         });
@@ -128,16 +135,27 @@ const MolecularViewer = ({
     });
   };
 
+  // Notify parent when viewer state changes
+  useEffect(() => {
+    if (onViewerStateChange) {
+      onViewerStateChange({
+        showDisulfides,
+        showHBonds,
+        showLabels,
+      });
+    }
+  }, [showDisulfides, showHBonds, showLabels, onViewerStateChange]);
+
   // Update visualization when options change
   useEffect(() => {
     if (!viewerInstanceRef.current || !modelRef.current) return;
 
     const viewer = viewerInstanceRef.current;
-    
+
     // Clear existing styles and objects
     viewer.removeAllShapes();
     viewer.removeAllLabels();
-    
+
     // Re-apply base style
     viewer.setStyle({}, { cartoon: { color: '#4A90E2' } });
 

@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
+import VoiceAssistant from '../voice/VoiceAssistant';
 
 const ProteinViewerModal = ({
   isOpen,
@@ -11,6 +12,12 @@ const ProteinViewerModal = ({
   colorScheme = 'spectrum',
   renderStyle = 'cartoon'
 }) => {
+  const [selectedResidue, setSelectedResidue] = useState(null);
+  const [viewerState, setViewerState] = useState({
+    showDisulfides: true,
+    showHBonds: false,
+    showLabels: false,
+  });
   // Debug logging
   useEffect(() => {
     if (isOpen) {
@@ -86,6 +93,8 @@ const ProteinViewerModal = ({
                   style={renderStyle}
                   colorScheme={colorScheme}
                   height="100%"
+                  onResidueSelect={setSelectedResidue}
+                  onViewerStateChange={setViewerState}
                 />
 
                 {/* Confidence Badge */}
@@ -166,6 +175,18 @@ const ProteinViewerModal = ({
                       <p className="text-sm text-gray-700 leading-relaxed">
                         {protein.function}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Voice Assistant - only shown in Target Protein modal */}
+                  {title === 'Target Protein' && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 mb-3">Voice Assistant</h3>
+                      <VoiceAssistant
+                        protein={protein}
+                        selectedResidue={selectedResidue}
+                        viewerState={viewerState}
+                      />
                     </div>
                   )}
                 </div>
