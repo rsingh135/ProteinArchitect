@@ -22,6 +22,14 @@ from services.docking_service import DockingService
 from services.gemini_service import GeminiProteinSearchService
 from services.ppi_service import PPIService
 
+# Initialize agentic research service (optional - may fail if DEDALUS_API_KEY not set)
+try:
+    from services.AgenticResearch import AgenticResearchService
+    agentic_research_service = AgenticResearchService()
+except (ImportError, ValueError) as e:
+    logger.warning(f"Could not initialize AgenticResearch service: {e}")
+    agentic_research_service = None
+
 load_dotenv()
 
 app = FastAPI(title="Protein Architect API", version="1.0.0")
@@ -92,6 +100,13 @@ class PPIPredictionRequest(BaseModel):
     protein_b: str  # UniProt ID
 
 
+class ProteinResearchRequest(BaseModel):
+    protein_id: str  # UniProt ID (e.g., "P01308")
+    model: Optional[str] = "google/gemini-1.5-pro"  # Model: "google/gemini-1.5-pro" (default), "google/gemini-1.5-flash", "gemini", "openai/gpt-4.1", etc.
+    include_novel: Optional[bool] = True  # Include novel research section
+    months_recent: Optional[int] = 6  # Months to consider for novel research
+
+
 @app.get("/")
 async def root():
     return {
@@ -104,6 +119,7 @@ async def root():
             "/docking_tools",
             "/search_proteins",
             "/predict_ppi",
+            "/research_protein",
             "/health"
         ]
     }
@@ -292,4 +308,56 @@ async def predict_ppi(request: PPIPredictionRequest):
     except Exception as e:
         logger.error(f"Error in PPI prediction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/research_protein")
+async def research_protein(request: ProteinResearchRequest):
+    """
+    Conduct comprehensive research on a protein using AI agents (Dedalus Labs).
+    
+    Uses multiple MCP servers to gather:
+    - Academic papers and publications
+    - Use cases and applications
+    - Drug development references
+    - Novel research findings
+    - Citations with hyperlinks
+    
+    Args:
+        protein_id: UniProt protein ID (e.g., "P01308" for insulin)
+        model: Model to use for research (default: "openai/gpt-4.1")
+        include_novel: Whether to include novel/recent research section
+        months_recent: Number of months to consider for "novel" research
+    
+    Returns:
+        Structured research results with citations, papers, use cases, 
+        drug development info, novel research, and summary
+    """
+    try:
+        if not agentic_research_service:
+            raise HTTPException(
+                status_code=503,
+                detail="AgenticResearch service not available. Please set DEDALUS_API_KEY environment variable."
+            )
+        
+        # Validate protein ID format (basic check)
+        if not request.protein_id or len(request.protein_id.strip()) == 0:
+            raise HTTPException(status_code=400, detail="protein_id is required")
+        
+        # Conduct research
+        results = await agentic_research_service.research_protein(
+            protein_id=request.protein_id.strip(),
+            model=request.model or "google/gemini-1.5-pro",
+            include_novel=request.include_novel if request.include_novel is not None else True,
+            months_recent=request.months_recent or 6
+        )
+        
+        return results
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in protein research: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Research failed: {str(e)}")
 
