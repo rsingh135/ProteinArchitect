@@ -71,13 +71,13 @@ const DualViewer = () => {
         <ViewerControls />
 
         {/* Dual Viewer Area */}
-        <div className="flex-1 grid grid-cols-2 gap-6 overflow-hidden">
+        <div className="flex-1 flex gap-6 overflow-hidden">
         {/* Left Viewer - Target Protein */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
+          className="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -133,7 +133,7 @@ const DualViewer = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
+          className="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
