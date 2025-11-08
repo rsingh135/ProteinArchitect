@@ -8,6 +8,4 @@ accelerate
 rlcard
 gymnasium
 huggingface_hub
-biopython
-torch
-transformers
+pandas
