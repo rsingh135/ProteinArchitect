@@ -6,21 +6,20 @@ import AIChat from './components/chat/AIChat';
 import { Layers, BarChart3 } from 'lucide-react';
 
 function App() {
-  const [activeView, setActiveView] = useState('viewer'); // 'viewer' | 'analysis'
+  const [activeView, setActiveView] = useState('viewer');
 
   return (
     <MainLayout>
-      {/* Main Content Area */}
       <div className="h-full flex flex-col">
         {/* View Toggle */}
-        <div className="flex items-center justify-center p-2 border-b border-dark-border">
-          <div className="glass rounded-lg p-1 flex space-x-1">
+        <div className="flex items-center justify-center p-4 bg-white border-b border-gray-200">
+          <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
             <button
               onClick={() => setActiveView('viewer')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 flex items-center space-x-2 ${
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
                 activeView === 'viewer'
-                  ? 'bg-neon-cyan/20 text-neon-cyan shadow-neon-cyan'
-                  : 'text-gray-400 hover:text-white hover:bg-dark-hover'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Layers className="w-4 h-4" />
@@ -28,10 +27,10 @@ function App() {
             </button>
             <button
               onClick={() => setActiveView('analysis')}
-              className={`px-6 py-2 rounded-md text-sm font-medium transition-all duration-300 flex items-center space-x-2 ${
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
                 activeView === 'analysis'
-                  ? 'bg-neon-purple/20 text-neon-purple shadow-neon-purple'
-                  : 'text-gray-400 hover:text-white hover:bg-dark-hover'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -41,7 +40,7 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden bg-gray-50">
           {activeView === 'viewer' && <DualViewer />}
           {activeView === 'analysis' && <AnalysisDashboard />}
         </div>

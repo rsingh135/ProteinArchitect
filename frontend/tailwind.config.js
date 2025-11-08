@@ -11,23 +11,24 @@ export default {
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        // Neon color palette
-        neon: {
-          cyan: '#00f0ff',
-          magenta: '#ff00ff',
-          green: '#00ff88',
-          orange: '#ffaa00',
-          purple: '#b000ff',
-          blue: '#0088ff',
-          pink: '#ff0080',
+        // Clean primary colors
+        primary: {
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
         },
-        // Dark backgrounds
-        dark: {
-          base: '#0a0a0f',
-          surface: '#12121a',
-          elevated: '#1a1a27',
-          border: '#2a2a3a',
-          hover: '#1f1f2e',
+        accent: {
+          purple: '#8b5cf6',
+          blue: '#3b82f6',
+          green: '#10b981',
+          orange: '#f59e0b',
         },
       },
       backdropBlur: {

@@ -1,20 +1,17 @@
 import React from 'react';
-import { Search, Upload, Settings, HelpCircle } from 'lucide-react';
+import { Upload, Settings, HelpCircle } from 'lucide-react';
 import SearchBar from './SearchBar';
 
 const Navbar = () => {
   return (
-    <nav className="glass border-b border-dark-border backdrop-blur-xl sticky top-0 z-50">
-      <div className="flex items-center justify-between px-6 py-3">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan to-neon-purple blur-md opacity-50 animate-glow-pulse"></div>
-            <h1 className="relative text-2xl font-bold gradient-text">
-              ProteinViz
-            </h1>
-          </div>
-          <span className="text-gray-400 text-sm hidden md:block">
+          <h1 className="text-2xl font-bold text-gray-900">
+            ProteinViz
+          </h1>
+          <span className="text-gray-500 text-sm hidden md:block">
             AI-Powered Molecular Analysis
           </span>
         </div>
@@ -27,27 +24,24 @@ const Navbar = () => {
         {/* Actions */}
         <div className="flex items-center space-x-2">
           <button
-            className="p-2 rounded-lg hover:bg-dark-hover transition-colors group relative"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             title="Upload Sequence"
           >
-            <Upload className="w-5 h-5 text-gray-400 group-hover:text-neon-cyan transition-colors" />
-            <div className="absolute inset-0 bg-neon-cyan opacity-0 group-hover:opacity-20 blur-xl transition-opacity rounded-lg"></div>
+            <Upload className="w-5 h-5 text-gray-600" />
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-dark-hover transition-colors group relative"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             title="Help"
           >
-            <HelpCircle className="w-5 h-5 text-gray-400 group-hover:text-neon-green transition-colors" />
-            <div className="absolute inset-0 bg-neon-green opacity-0 group-hover:opacity-20 blur-xl transition-opacity rounded-lg"></div>
+            <HelpCircle className="w-5 h-5 text-gray-600" />
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-dark-hover transition-colors group relative"
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             title="Settings"
           >
-            <Settings className="w-5 h-5 text-gray-400 group-hover:text-neon-magenta transition-colors" />
-            <div className="absolute inset-0 bg-neon-magenta opacity-0 group-hover:opacity-20 blur-xl transition-opacity rounded-lg"></div>
+            <Settings className="w-5 h-5 text-gray-600" />
           </button>
         </div>
       </div>
