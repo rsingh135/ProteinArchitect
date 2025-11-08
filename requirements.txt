@@ -10,3 +10,4 @@ gymnasium
 huggingface_hub
 pandas
 sacremoses
+python-dotenv

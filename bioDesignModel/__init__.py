@@ -1,18 +1,12 @@
-""" IMPLEMENTATION FOR BACKEND: 
-# backend/app/routes/ai_routes.py
-from biogenesis_model import pipeline
+"""
+BioDesignModel - Natural Language to UniProt Protein Search
+-----------------------------------------------------------
+Provides functionality to search UniProt protein database using natural language queries.
 
-bio = pipeline.BioGenesis()
-
-@app.post("/generate_organism")
-async def generate_organism(request: Request):
-    data = await request.json()
-    result = bio.run_pipeline(prompt=data["prompt"])
-    return JSONResponse(result)
-    
+Flow: Natural Language → LLM Processing → UniProt Query → Protein Data
 """
 
-# Import dataloader functions (always available)
+# Import dataloader functions (used by query_generator)
 from .dataloader import (
     fetch_uniprot,
     create_protein_dataset,
@@ -20,45 +14,26 @@ from .dataloader import (
     create_sequence_dataloader
 )
 
-# Import other modules (may fail if dependencies missing, but that's okay)
-try:
-    from .pipline import BioGenesis  # Note: file is named pipline.py (typo in filename)
-except (ImportError, ModuleNotFoundError, AttributeError):
-    BioGenesis = None
-
-try:
-    from .llm_model import BioDesignModel
-except (ImportError, ModuleNotFoundError, AttributeError):
-    BioDesignModel = None
-
-try:
-    from .stability_predictor import StabilityPredictor
-except (ImportError, ModuleNotFoundError, AttributeError):
-    StabilityPredictor = None
-
-try:
-    from .feature_extractor import compute_features
-except (ImportError, ModuleNotFoundError, AttributeError):
-    compute_features = None
-
+# Import query generator functions
 try:
     from .query_generator import (
         UniProtQueryGenerator,
-        search_proteins_from_natural_language
+        search_proteins_from_natural_language,
+        search_and_get_sequence
     )
-except (ImportError, ModuleNotFoundError, AttributeError):
+except (ImportError, ModuleNotFoundError, AttributeError) as e:
     UniProtQueryGenerator = None
     search_proteins_from_natural_language = None
+    search_and_get_sequence = None
 
 __all__ = [
-    "BioGenesis",
-    "BioDesignModel",
-    "StabilityPredictor",
+    # Core search functions
+    "UniProtQueryGenerator",
+    "search_proteins_from_natural_language",
+    "search_and_get_sequence",
+    # Data loading functions (used by search)
     "fetch_uniprot",
     "create_protein_dataset",
     "create_dataloader",
     "create_sequence_dataloader",
-    "compute_features",
-    "UniProtQueryGenerator",
-    "search_proteins_from_natural_language",
 ]
