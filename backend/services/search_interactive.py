@@ -39,16 +39,16 @@ def main():
         return
     
     # Check available APIs
-    has_xai = bool(os.getenv("XAI_API_KEY"))
+    has_gemini = bool(os.getenv("GEMINI_API_KEY"))
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
     
-    # Ask which LLM to use (default to xAI if available)
+    # Ask which LLM to use (default to Gemini if available)
     print("\nChoose LLM for query generation:")
-    if has_xai:
-        print("  1. xAI (Grok) - Available [RECOMMENDED - Best for medical/biological queries]")
+    if has_gemini:
+        print("  1. Google Gemini - Available [RECOMMENDED - Best for medical/biological queries]")
         default_choice = "1"
     else:
-        print("  1. xAI (Grok) - Not available (set XAI_API_KEY)")
+        print("  1. Google Gemini - Not available (set GEMINI_API_KEY)")
         default_choice = "2"
     
     if has_openai:
@@ -60,18 +60,18 @@ def main():
     
     llm_choice = input(f"\nEnter choice (1/2/3, default={default_choice}): ").strip() or default_choice
     
-    use_xai = False
+    use_gemini = False
     use_openai = False
     
-    if llm_choice == "1" and has_xai:
-        use_xai = True
-        print("\nUsing xAI (Grok) for optimal medical/biological query generation...")
+    if llm_choice == "1" and has_gemini:
+        use_gemini = True
+        print("\nUsing Google Gemini for optimal medical/biological query generation...")
     elif llm_choice == "2" and has_openai:
         use_openai = True
         print("\nUsing OpenAI...")
-    elif llm_choice == "1" and not has_xai:
-        print("\n[WARNING] xAI not available. Falling back to local model...")
-        print("Set XAI_API_KEY in .env file to use xAI")
+    elif llm_choice == "1" and not has_gemini:
+        print("\n[WARNING] Google Gemini not available. Falling back to local model...")
+        print("Set GEMINI_API_KEY in .env file to use Gemini")
     else:
         print("\nUsing local model (BioGPT)...")
     
@@ -100,7 +100,7 @@ def main():
         natural_language_query=user_query,
         max_results=max_results,
         top_n=top_n,
-        use_xai=use_xai,
+        use_gemini=use_gemini,
         use_openai=use_openai,
         reviewed_only=True
     )

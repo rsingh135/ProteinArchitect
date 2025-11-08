@@ -23,7 +23,7 @@ if __name__ == "__main__":
     sequence = search_and_get_sequence(
         "Find human enzymes",
         max_results=10,
-        use_xai=True  # Use xAI if available, otherwise falls back to local
+        use_gemini=True  # Use Gemini if available, otherwise falls back to local
     )
     
     if sequence:

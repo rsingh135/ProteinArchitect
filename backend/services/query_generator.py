@@ -35,9 +35,9 @@ class UniProtQueryGenerator:
         self, 
         model_name: str = "microsoft/biogpt", 
         use_openai: bool = False, 
-        use_xai: bool = False,
+        use_gemini: bool = False,
         api_key: Optional[str] = None,
-        xai_model: str = "grok-3"  # xAI model: "grok-3" (grok-beta deprecated), "grok-2-1212", "grok-2", etc.
+        gemini_model: str = "gemini-1.5-flash"  # Gemini model: "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"
     ):
         """
         Initialize the query generator.
@@ -45,37 +45,39 @@ class UniProtQueryGenerator:
         Args:
             model_name: Hugging Face model name for local LLM
             use_openai: If True, use OpenAI API instead of local model
-            use_xai: If True, use xAI (Grok) API instead of local model
-            api_key: API key (OpenAI or xAI, depending on which is enabled)
-            xai_model: xAI model name (default: "grok-beta", also supports "grok-2-1212", "grok-2")
+            use_gemini: If True, use Google Gemini API instead of local model
+            api_key: API key (OpenAI or Gemini, depending on which is enabled)
+            gemini_model: Gemini model name (default: "gemini-1.5-flash", also supports "gemini-1.5-pro", "gemini-pro")
         """
         self.use_openai = use_openai
-        self.use_xai = use_xai
-        self.xai_model = xai_model
+        self.use_gemini = use_gemini
+        self.gemini_model = gemini_model
         
         # Validate that only one API is used at a time
-        if use_xai and use_openai:
-            raise ValueError("Cannot use both xAI and OpenAI. Choose one.")
+        if use_gemini and use_openai:
+            raise ValueError("Cannot use both Gemini and OpenAI. Choose one.")
         
-        if use_xai:
+        if use_gemini:
             try:
-                import requests
+                import google.generativeai as genai
                 if not api_key:
-                    api_key = os.getenv("XAI_API_KEY")
+                    api_key = os.getenv("GEMINI_API_KEY")
                 # Check if key is empty string (common .env issue)
                 if not api_key or api_key.strip() == "":
                     raise ValueError(
-                        "xAI API key required when use_xai=True. "
-                        "Set XAI_API_KEY in .env file or environment variable. "
-                        "Get your key from: https://x.ai"
+                        "Gemini API key required when use_gemini=True. "
+                        "Set GEMINI_API_KEY in .env file or environment variable. "
+                        "Get your key from: https://makersuite.google.com/app/apikey"
                     )
-                self.xai_api_key = api_key.strip()
-                self.xai_base_url = "https://api.x.ai/v1"
-                logger.info("Using xAI (Grok) API for query generation")
+                genai.configure(api_key=api_key.strip())
+                self.gemini_client = genai.GenerativeModel(gemini_model)
+                logger.info(f"Using Google Gemini ({gemini_model}) API for query generation")
             except ValueError:
                 raise  # Re-raise ValueError as-is
+            except ImportError:
+                raise ImportError("Google Generative AI package required. Install with: pip install google-generativeai")
             except Exception as e:
-                raise ImportError(f"xAI API setup failed: {e}")
+                raise ImportError(f"Gemini API setup failed: {e}")
         elif use_openai:
             try:
                 from openai import OpenAI
@@ -132,7 +134,7 @@ class UniProtQueryGenerator:
         print(f"[DEBUG] Medical Term Extraction & Query Generation")
         print(f"[DEBUG] =========================================")
         print(f"[DEBUG] Step 1: Extracting medical terms from: '{user_query}'")
-        print(f"[DEBUG] Using LLM: {'xAI (Grok)' if self.use_xai else 'OpenAI' if self.use_openai else 'Local (BioGPT)'}")
+        print(f"[DEBUG] Using LLM: {'Google Gemini' if self.use_gemini else 'OpenAI' if self.use_openai else 'Local (BioGPT)'}")
         
         # Step 1: Extract medical terms and traits
         medical_terms = self._extract_medical_terms(user_query, max_results, reviewed_only)
@@ -168,24 +170,23 @@ class UniProtQueryGenerator:
         - disease_related: boolean if disease-related
         - medical_context: additional medical/biological context
         """
-        if self.use_xai:
-            return self._extract_medical_terms_xai(user_query, max_results, reviewed_only)
+        if self.use_gemini:
+            return self._extract_medical_terms_gemini(user_query, max_results, reviewed_only)
         elif self.use_openai:
             return self._extract_medical_terms_openai(user_query, max_results, reviewed_only)
         else:
             return self._extract_medical_terms_local(user_query, max_results, reviewed_only)
     
-    def _extract_medical_terms_xai(
+    def _extract_medical_terms_gemini(
         self,
         user_query: str,
         max_results: int,
         reviewed_only: bool
     ) -> Dict[str, any]:
-        """Extract medical terms using xAI (Grok) API."""
-        import requests
+        """Extract medical terms using Google Gemini API."""
         import json
         
-        system_prompt = """You are a biomedical expert that extracts structured medical and biological information from natural language protein search queries.
+        prompt = """You are a biomedical expert that extracts structured medical and biological information from natural language protein search queries.
 
 Extract the following information from the user's query and return it as JSON:
 
@@ -211,39 +212,25 @@ Common keywords to recognize:
 - Signal peptide → "signal-peptide"
 - Disease-related → "disease-mutation"
 
-Return ONLY valid JSON, nothing else."""
+Return ONLY valid JSON, nothing else.
 
-        user_message = f"""Extract medical and biological information from this protein search query:
+Now extract medical and biological information from this protein search query:
 
 "{user_query}"
 
 Return the information as JSON."""
 
         try:
-            response = requests.post(
-                f"{self.xai_base_url}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.xai_api_key}"
-                },
-                json={
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
-                    "model": self.xai_model,
-                    "stream": False,
+            response = self.gemini_client.generate_content(
+                prompt,
+                generation_config={
                     "temperature": 0.2,  # Lower temperature for more structured output
-                    "max_tokens": 300
-                },
-                timeout=30
+                    "max_output_tokens": 300,
+                }
             )
             
-            response.raise_for_status()
-            result = response.json()
-            
-            raw_output = result["choices"][0]["message"]["content"].strip()
-            print(f"[DEBUG] xAI Medical Terms Extraction Raw Output: {raw_output}")
+            raw_output = response.text.strip()
+            print(f"[DEBUG] Gemini Medical Terms Extraction Raw Output: {raw_output}")
             
             # Try to extract JSON from the response
             # Remove markdown code blocks if present
@@ -262,7 +249,7 @@ Return the information as JSON."""
                 return self._fallback_medical_extraction(user_query)
                 
         except Exception as e:
-            logger.error(f"Error extracting medical terms with xAI: {e}")
+            logger.error(f"Error extracting medical terms with Gemini: {e}")
             return self._fallback_medical_extraction(user_query)
     
     def _extract_medical_terms_openai(
@@ -487,17 +474,16 @@ Return as JSON."""
         
         return query
     
-    def _xai_query_generation(
+    def _gemini_query_generation(
         self,
         user_query: str,
         max_results: int,
         reviewed_only: bool
     ) -> str:
-        """Generate query using xAI (Grok) API with medical/biological context."""
-        import requests
+        """Generate query using Google Gemini API with medical/biological context."""
         import os
         
-        system_prompt = """You are a biomedical database query expert specializing in UniProt protein database queries. 
+        prompt = """You are a biomedical database query expert specializing in UniProt protein database queries. 
 You convert natural language protein search requests into valid UniProt query syntax for medical and biological research.
 
 UniProt Query Syntax Guide:
@@ -534,9 +520,9 @@ Output: "keyword:KW-0472 AND length:[100 TO 500] AND reviewed:true"
 Input: "Find disease-associated proteins"
 Output: "keyword:KW-0564 AND reviewed:true"
 
-Return ONLY the UniProt query string, nothing else. Focus on medical and biological accuracy."""
+Return ONLY the UniProt query string, nothing else. Focus on medical and biological accuracy.
 
-        user_message = f"""Convert this biomedical protein search request to a UniProt query:
+Now convert this biomedical protein search request to a UniProt query:
 
 "{user_query}"
 
@@ -547,30 +533,16 @@ Context:
 - Return only the UniProt query string in valid syntax"""
 
         try:
-            response = requests.post(
-                f"{self.xai_base_url}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.xai_api_key}"
-                },
-                json={
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
-                    "model": self.xai_model,  # xAI model (grok-beta, grok-2-1212, grok-2, etc.)
-                    "stream": False,
+            response = self.gemini_client.generate_content(
+                prompt,
+                generation_config={
                     "temperature": 0.3,  # Lower temperature for more consistent, accurate queries
-                    "max_tokens": 200
-                },
-                timeout=30
+                    "max_output_tokens": 200,
+                }
             )
             
-            response.raise_for_status()
-            result = response.json()
-            
-            raw_query = result["choices"][0]["message"]["content"].strip()
-            print(f"\n[DEBUG] xAI LLM Raw Output: {raw_query}")
+            raw_query = response.text.strip()
+            print(f"\n[DEBUG] Gemini LLM Raw Output: {raw_query}")
             
             # Clean up the query (remove markdown, quotes, etc.)
             query = self._clean_query(raw_query)
@@ -595,18 +567,13 @@ Context:
                     query = f"{query} AND reviewed:true"
                 print(f"[DEBUG] After reviewed filter: {query}")
             
-            logger.info(f"Generated UniProt query (xAI): {query}")
+            logger.info(f"Generated UniProt query (Gemini): {query}")
             print(f"[DEBUG] Final UniProt Query: {query}")
             return query
             
-        except requests.RequestException as e:
-            logger.error(f"Error generating query with xAI: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response: {e.response.text}")
-            # Fallback to keyword-based query
-            return self._fallback_query(user_query, reviewed_only)
         except Exception as e:
-            logger.error(f"Error generating query with xAI: {e}")
+            logger.error(f"Error generating query with Gemini: {e}")
+            # Fallback to keyword-based query
             return self._fallback_query(user_query, reviewed_only)
     
     def _openai_query_generation(
@@ -948,7 +915,7 @@ def search_proteins_from_natural_language(
     natural_language_query: str,
     size: int = 100,
     use_openai: bool = False,
-    use_xai: bool = False,
+    use_gemini: bool = False,
     api_key: Optional[str] = None,
     reviewed_only: bool = True
 ):
@@ -959,8 +926,8 @@ def search_proteins_from_natural_language(
         natural_language_query: Natural language description
         size: Number of proteins to fetch
         use_openai: Use OpenAI API for query generation
-        use_xai: Use xAI (Grok) API for query generation (optimized for medical/biological text)
-        api_key: API key (OpenAI or xAI, depending on which is enabled)
+        use_gemini: Use Google Gemini API for query generation (optimized for medical/biological text)
+        api_key: API key (OpenAI or Gemini, depending on which is enabled)
         reviewed_only: Only search reviewed proteins
     
     Returns:
@@ -977,7 +944,7 @@ def search_proteins_from_natural_language(
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
         use_openai=use_openai, 
-        use_xai=use_xai,
+        use_gemini=use_gemini,
         api_key=api_key
     )
     uniprot_query = query_gen.natural_language_to_query(
@@ -1000,7 +967,7 @@ def search_and_get_sequence(
     max_results: int = 10,
     top_n: int = 5,
     use_openai: bool = False,
-    use_xai: bool = False,
+    use_gemini: bool = False,
     api_key: Optional[str] = None,
     reviewed_only: bool = True
 ) -> Optional[List[Dict[str, str]]]:
@@ -1012,8 +979,8 @@ def search_and_get_sequence(
         max_results: Maximum number of results to fetch and display (default: 10)
         top_n: Number of top sequences to return (default: 5)
         use_openai: Use OpenAI API for query generation
-        use_xai: Use xAI (Grok) API for query generation
-        api_key: API key (OpenAI or xAI)
+        use_gemini: Use Google Gemini API for query generation
+        api_key: API key (OpenAI or Gemini)
         reviewed_only: Only search reviewed proteins
     
     Returns:
@@ -1031,7 +998,7 @@ def search_and_get_sequence(
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
         use_openai=use_openai,
-        use_xai=use_xai,
+        use_gemini=use_gemini,
         api_key=api_key
     )
     
@@ -1149,15 +1116,15 @@ if __name__ == "__main__":
         uniprot_query = query_gen.natural_language_to_query(query)
         print(f"UniProt Query: {uniprot_query}")
     
-    # Example 2: Using xAI (Grok) - optimized for medical/biological text
-    if os.getenv("XAI_API_KEY"):
+    # Example 2: Using Google Gemini - optimized for medical/biological text
+    if os.getenv("GEMINI_API_KEY"):
         print("\n" + "=" * 60)
-        print("Example 2: xAI (Grok) Query Generation (Medical/Biological)")
+        print("Example 2: Google Gemini Query Generation (Medical/Biological)")
         print("=" * 60)
         
-        query_gen_xai = UniProtQueryGenerator(use_xai=True)
+        query_gen_gemini = UniProtQueryGenerator(use_gemini=True)
         query = "Find disease-associated proteins involved in cancer"
-        uniprot_query = query_gen_xai.natural_language_to_query(query)
+        uniprot_query = query_gen_gemini.natural_language_to_query(query)
         print(f"Natural Language: {query}")
         print(f"UniProt Query: {uniprot_query}")
     

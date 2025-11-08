@@ -9,8 +9,8 @@ Interactive mode:
 With custom query:
     python -m bioDesignModel.test_natural_language_flow "Find disease-associated proteins"
 
-With xAI:
-    python -m bioDesignModel.test_natural_language_flow "Find antimicrobial proteins" --use-xai
+With Gemini:
+    python -m bioDesignModel.test_natural_language_flow "Find antimicrobial proteins" --use-gemini
 """
 
 import sys
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-def test_single_query(natural_language: str, use_xai: bool = False, use_openai: bool = False, size: int = 10):
+def test_single_query(natural_language: str, use_gemini: bool = False, use_openai: bool = False, size: int = 10):
     """Test a single natural language query through the complete flow"""
     
     print(f"\n{'='*70}")
@@ -71,15 +71,15 @@ def test_single_query(natural_language: str, use_xai: bool = False, use_openai: 
             from backend.services.query_generator import UniProtQueryGenerator
         
         # Determine which LLM to use
-        if use_xai:
-            print("  Using xAI (Grok) for query generation...")
-            query_gen = UniProtQueryGenerator(use_xai=True)
+        if use_gemini:
+            print("  Using Google Gemini for query generation...")
+            query_gen = UniProtQueryGenerator(use_gemini=True)
         elif use_openai:
             print("  Using OpenAI for query generation...")
             query_gen = UniProtQueryGenerator(use_openai=True)
         else:
             print("  Using local model (BioGPT) for query generation...")
-            query_gen = UniProtQueryGenerator(use_openai=False, use_xai=False)
+            query_gen = UniProtQueryGenerator(use_openai=False, use_gemini=False)
         
         uniprot_query = query_gen.natural_language_to_query(
             natural_language,
@@ -139,7 +139,7 @@ def test_single_query(natural_language: str, use_xai: bool = False, use_openai: 
             uniprot_query_full, dataset = search_proteins_from_natural_language(
                 natural_language,
                 size=size,
-                use_xai=use_xai,
+                use_gemini=use_gemini,
                 use_openai=use_openai,
                 reviewed_only=True
             )
@@ -171,7 +171,7 @@ def test_single_query(natural_language: str, use_xai: bool = False, use_openai: 
         return False
 
 
-def test_natural_language_to_uniprot_flow(use_xai: bool = False, use_openai: bool = False):
+def test_natural_language_to_uniprot_flow(use_gemini: bool = False, use_openai: bool = False):
     """Test the complete flow: Natural Language -> UniProt Query -> Protein Data"""
     
     print("=" * 70)
@@ -207,12 +207,12 @@ def test_natural_language_to_uniprot_flow(use_xai: bool = False, use_openai: boo
                 from backend.services.query_generator import UniProtQueryGenerator
             
             # Use specified LLM
-            if use_xai:
-                query_gen = UniProtQueryGenerator(use_xai=True)
+            if use_gemini:
+                query_gen = UniProtQueryGenerator(use_gemini=True)
             elif use_openai:
                 query_gen = UniProtQueryGenerator(use_openai=True)
             else:
-                query_gen = UniProtQueryGenerator(use_openai=False, use_xai=False)
+                query_gen = UniProtQueryGenerator(use_openai=False, use_gemini=False)
             
             uniprot_query = query_gen.natural_language_to_query(
                 natural_language,
@@ -272,7 +272,7 @@ def test_natural_language_to_uniprot_flow(use_xai: bool = False, use_openai: boo
                 uniprot_query_full, dataset = search_proteins_from_natural_language(
                     natural_language,
                     size=5,
-                    use_xai=use_xai,
+                    use_gemini=use_gemini,
                     use_openai=use_openai,
                     reviewed_only=True
                 )
@@ -372,22 +372,22 @@ def interactive_mode():
     print()
     
     # Check available APIs (load_dotenv already called at top)
-    has_xai = bool(os.getenv("XAI_API_KEY"))
+    has_gemini = bool(os.getenv("GEMINI_API_KEY"))
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
     
     # Debug: Show if keys are detected
-    if not has_xai:
-        print("\n[DEBUG] XAI_API_KEY not found in environment.")
-        print("  Make sure .env file exists and contains: XAI_API_KEY=your-key")
+    if not has_gemini:
+        print("\n[DEBUG] GEMINI_API_KEY not found in environment.")
+        print("  Make sure .env file exists and contains: GEMINI_API_KEY=your-key")
         print("  Current working directory:", os.getcwd())
         print("  Checking for .env file:", os.path.exists(".env"))
     
     print("Available LLM options:")
     print("  1. Local model (BioGPT) - Always available")
-    if has_xai:
-        print("  2. xAI (Grok) - Available (XAI_API_KEY set)")
+    if has_gemini:
+        print("  2. Google Gemini - Available (GEMINI_API_KEY set)")
     else:
-        print("  2. xAI (Grok) - Not available (set XAI_API_KEY)")
+        print("  2. Google Gemini - Not available (set GEMINI_API_KEY)")
     if has_openai:
         print("  3. OpenAI - Available (OPENAI_API_KEY set)")
     else:
@@ -404,15 +404,15 @@ def interactive_mode():
                 break
             
             # Get LLM choice
-            print("\nChoose LLM (1=Local, 2=xAI, 3=OpenAI, Enter=Local): ", end="")
+            print("\nChoose LLM (1=Local, 2=Gemini, 3=OpenAI, Enter=Local): ", end="")
             llm_choice = input().strip()
             
-            use_xai = False
+            use_gemini = False
             use_openai = False
             
-            if llm_choice == "2" and has_xai:
-                use_xai = True
-                print("Using xAI (Grok)...")
+            if llm_choice == "2" and has_gemini:
+                use_gemini = True
+                print("Using Google Gemini...")
             elif llm_choice == "3" and has_openai:
                 use_openai = True
                 print("Using OpenAI...")
@@ -425,7 +425,7 @@ def interactive_mode():
             size = int(size_input) if size_input.isdigit() else 10
             
             # Test the query
-            success = test_single_query(user_query, use_xai=use_xai, use_openai=use_openai, size=size)
+            success = test_single_query(user_query, use_gemini=use_gemini, use_openai=use_openai, size=size)
             
             if success:
                 print(f"\n[OK] Query processed successfully!")
@@ -474,9 +474,9 @@ Examples:
         help="Run in interactive mode"
     )
     parser.add_argument(
-        "--use-xai",
+        "--use-gemini",
         action="store_true",
-        help="Use xAI (Grok) for query generation (requires XAI_API_KEY)"
+        help="Use Google Gemini for query generation (requires GEMINI_API_KEY)"
     )
     parser.add_argument(
         "--use-openai",
@@ -504,7 +504,7 @@ Examples:
     elif args.query:
         test_single_query(
             args.query,
-            use_xai=args.use_xai,
+            use_gemini=args.use_gemini,
             use_openai=args.use_openai,
             size=args.size
         )
@@ -515,7 +515,7 @@ Examples:
     # Default: Run full test suite
     else:
         test_natural_language_to_uniprot_flow(
-            use_xai=args.use_xai,
+            use_gemini=args.use_gemini,
             use_openai=args.use_openai
         )
         test_query_validation()
