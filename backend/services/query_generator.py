@@ -933,13 +933,7 @@ def search_proteins_from_natural_language(
     Returns:
         Tuple of (uniprot_query, dataset)
     """
-    import sys
-    from pathlib import Path
-    # Add GenLab directory to path to import bioDesignModel
-    current_dir = Path(__file__).parent.parent.parent
-    if str(current_dir) not in sys.path:
-        sys.path.insert(0, str(current_dir))
-    from bioDesignModel.dataloader import create_protein_dataset
+    from .dataloader import create_protein_dataset
     
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
@@ -987,13 +981,7 @@ def search_and_get_sequence(
         List of dictionaries with 'protein_id', 'sequence', 'url', and 'function' for top N proteins,
         or None if no results
     """
-    import sys
-    from pathlib import Path
-    # Add GenLab directory to path to import bioDesignModel
-    current_dir = Path(__file__).parent.parent.parent
-    if str(current_dir) not in sys.path:
-        sys.path.insert(0, str(current_dir))
-    from bioDesignModel.dataloader import fetch_uniprot
+    from .dataloader import fetch_uniprot
     
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
