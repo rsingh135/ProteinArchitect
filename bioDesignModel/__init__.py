@@ -14,24 +14,16 @@ from .dataloader import (
     create_sequence_dataloader
 )
 
-# Import query generator functions
-try:
-    from .query_generator import (
-        UniProtQueryGenerator,
-        search_proteins_from_natural_language,
-        search_and_get_sequence
-    )
-except (ImportError, ModuleNotFoundError, AttributeError) as e:
-    UniProtQueryGenerator = None
-    search_proteins_from_natural_language = None
-    search_and_get_sequence = None
+# Query generator functions have been moved to backend/services/query_generator.py
+# Import them from there if needed:
+# from backend.services.query_generator import (
+#     UniProtQueryGenerator,
+#     search_proteins_from_natural_language,
+#     search_and_get_sequence
+# )
 
 __all__ = [
-    # Core search functions
-    "UniProtQueryGenerator",
-    "search_proteins_from_natural_language",
-    "search_and_get_sequence",
-    # Data loading functions (used by search)
+    # Data loading functions
     "fetch_uniprot",
     "create_protein_dataset",
     "create_dataloader",

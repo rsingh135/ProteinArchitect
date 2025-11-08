@@ -1,8 +1,17 @@
 """
 Test script for search_and_get_sequence function
 """
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
-from bioDesignModel.query_generator import search_and_get_sequence
+
+# Add GenLab directory to path
+current_dir = Path(__file__).parent
+genlab_dir = current_dir.parent
+if str(genlab_dir) not in sys.path:
+    sys.path.insert(0, str(genlab_dir))
+
+from backend.services.query_generator import search_and_get_sequence
 
 load_dotenv()
 
@@ -25,4 +34,5 @@ if __name__ == "__main__":
         print(f"First 100 characters: {sequence[:100]}...")
     else:
         print("\nNo sequence found.")
+
 

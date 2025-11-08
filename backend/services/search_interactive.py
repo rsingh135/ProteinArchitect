@@ -6,16 +6,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 
-# Add parent directory to path so we can import bioDesignModel
-current_dir = Path(__file__).parent
-parent_dir = current_dir.parent
-if str(parent_dir) not in sys.path:
-    sys.path.insert(0, str(parent_dir))
+# Add GenLab directory to path so we can import from backend.services
+current_dir = Path(__file__).parent.parent.parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
 
 try:
-    from bioDesignModel.query_generator import search_and_get_sequence
+    from backend.services.query_generator import search_and_get_sequence
 except ImportError:
-    # Try relative import if running from within bioDesignModel
+    # Try relative import if running from within backend/services
     from query_generator import search_and_get_sequence
 
 load_dotenv()

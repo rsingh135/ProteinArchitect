@@ -27,12 +27,18 @@ if str(genlab_dir) not in sys.path:
     sys.path.insert(0, str(genlab_dir))
 
 try:
-    from bioDesignModel.query_generator import search_proteins_from_natural_language
+    from backend.services.query_generator import search_proteins_from_natural_language
     from bioDesignModel.dataloader import fetch_uniprot, create_protein_dataset
 except ImportError:
     # Try relative imports if running from bioDesignModel directory
-    from query_generator import search_proteins_from_natural_language
-    from dataloader import fetch_uniprot, create_protein_dataset
+    import sys
+    from pathlib import Path
+    current_dir = Path(__file__).parent
+    genlab_dir = current_dir.parent
+    if str(genlab_dir) not in sys.path:
+        sys.path.insert(0, str(genlab_dir))
+    from backend.services.query_generator import search_proteins_from_natural_language
+    from bioDesignModel.dataloader import fetch_uniprot, create_protein_dataset
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -54,9 +60,15 @@ def test_single_query(natural_language: str, use_xai: bool = False, use_openai: 
         print(f"  Input: '{natural_language}'")
         
         try:
-            from bioDesignModel.query_generator import UniProtQueryGenerator
+            from backend.services.query_generator import UniProtQueryGenerator
         except ImportError:
-            from query_generator import UniProtQueryGenerator
+            import sys
+            from pathlib import Path
+            current_dir = Path(__file__).parent
+            genlab_dir = current_dir.parent
+            if str(genlab_dir) not in sys.path:
+                sys.path.insert(0, str(genlab_dir))
+            from backend.services.query_generator import UniProtQueryGenerator
         
         # Determine which LLM to use
         if use_xai:
@@ -184,9 +196,15 @@ def test_natural_language_to_uniprot_flow(use_xai: bool = False, use_openai: boo
             print(f"  Input: '{natural_language}'")
             
             try:
-                from bioDesignModel.query_generator import UniProtQueryGenerator
+                from backend.services.query_generator import UniProtQueryGenerator
             except ImportError:
-                from query_generator import UniProtQueryGenerator
+                import sys
+                from pathlib import Path
+                current_dir = Path(__file__).parent
+                genlab_dir = current_dir.parent
+                if str(genlab_dir) not in sys.path:
+                    sys.path.insert(0, str(genlab_dir))
+                from backend.services.query_generator import UniProtQueryGenerator
             
             # Use specified LLM
             if use_xai:
@@ -311,9 +329,15 @@ def test_query_validation():
     print(f"{'='*70}")
     
     try:
-        from bioDesignModel.query_generator import UniProtQueryGenerator
+        from backend.services.query_generator import UniProtQueryGenerator
     except ImportError:
-        from query_generator import UniProtQueryGenerator
+        import sys
+        from pathlib import Path
+        current_dir = Path(__file__).parent
+        genlab_dir = current_dir.parent
+        if str(genlab_dir) not in sys.path:
+            sys.path.insert(0, str(genlab_dir))
+        from backend.services.query_generator import UniProtQueryGenerator
     
     query_gen = UniProtQueryGenerator(use_openai=False)
     

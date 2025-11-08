@@ -54,7 +54,7 @@ def fetch_uniprot(
     try:
         r = requests.get(url, timeout=30)
         r.raise_for_status()
-        df = pd.read_csv(io.StringIO(r.text), sep="\t")
+    df = pd.read_csv(io.StringIO(r.text), sep="\t")
         
         # Standardize column names
         column_mapping = {
@@ -73,7 +73,7 @@ def fetch_uniprot(
         # Drop rows with missing essential data
         df = df.dropna(subset=["function", "sequence"])
         
-        logger.info(f"Fetched {len(df)} proteins from UniProt")
+    logger.info(f"Fetched {len(df)} proteins from UniProt")
         return df
     
     except requests.RequestException as e:
