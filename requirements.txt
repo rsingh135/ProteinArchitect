@@ -1,0 +1,11 @@
+transformers
+datasets
+biopython
+torch
+tqdm
+requests
+accelerate
+rlcard
+gymnasium
+huggingface_hub
+pandas
