@@ -68,10 +68,15 @@ class PPIPredictionService:
         """
         Initialize the PPI prediction service
         
+        For SageMaker deployment:
+        - model_path: Should be /opt/ml/model/model.pth (SageMaker standard)
+        - embeddings_cache_path: Should be /opt/ml/model/embeddings_cache.pkl
+        - Model files are provided by SageMaker from S3
+        
         Args:
             model_path: Path to trained model file
             embeddings_cache_path: Path to embeddings cache file
-            device: Device to run inference on
+            device: Device to run inference on (cuda/cpu)
         """
         self.device = device
         logger.info(f"Initializing PPI Prediction Service on {device}")

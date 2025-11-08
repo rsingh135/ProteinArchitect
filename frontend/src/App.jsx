@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import MainLayout from './components/layout/MainLayout';
 import DualViewer from './components/viewer/DualViewer';
 import AnalysisDashboard from './components/analysis/AnalysisDashboard';
+import PPIPrediction from './components/PPIPrediction';
 import AIChat from './components/chat/AIChat';
-import { Layers, BarChart3 } from 'lucide-react';
+import { Layers, BarChart3, Dna } from 'lucide-react';
 
 function App() {
   const [activeView, setActiveView] = useState('viewer');
@@ -36,6 +37,17 @@ function App() {
               <BarChart3 className="w-4 h-4" />
               <span>Analysis Dashboard</span>
             </button>
+            <button
+              onClick={() => setActiveView('ppi')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
+                activeView === 'ppi'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Dna className="w-4 h-4" />
+              <span>PPI Prediction</span>
+            </button>
           </div>
         </div>
 
@@ -43,6 +55,7 @@ function App() {
         <div className="flex-1 w-full overflow-hidden bg-gray-50">
           {activeView === 'viewer' && <DualViewer />}
           {activeView === 'analysis' && <AnalysisDashboard />}
+          {activeView === 'ppi' && <PPIPrediction />}
         </div>
       </div>
 

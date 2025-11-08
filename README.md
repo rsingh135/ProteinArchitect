@@ -4,6 +4,13 @@
 
 An **Agentic, Closed-Loop Generative Platform** that designs and optimizes therapeutic protein sequences for function, stability, and large-scale industrial manufacturability.
 
+## 📚 Quick Links
+
+- **🚀 START HERE**: See `START_HERE.md` for quick setup
+- **🔧 Fix PyTorch Error**: See `QUICK_FIX.md` or `FIX_TORCH_ERROR.md`
+- **📖 Complete Setup**: See `COMPLETE_STEP_BY_STEP.md`
+- **🔒 Security**: See `SECURITY.md`
+
 ---
 
 ## ⚙️ Configuration & Setup (REQUIRED BEFORE RUNNING)

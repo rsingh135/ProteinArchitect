@@ -28,10 +28,12 @@ RUN pip install --no-cache-dir \
     pandas \
     tqdm
 
-# Copy model files
-COPY model.pth /opt/ml/model/
-COPY embeddings_cache.pkl /opt/ml/model/
+# Copy model service code
 COPY ml_service.py /opt/ml/model/
+
+# Model files (model.pth and embeddings_cache.pkl) will be provided by SageMaker
+# They should be uploaded to S3 and specified in the SageMaker model configuration
+# The ml_service.py will load them from /opt/ml/model/ directory
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
