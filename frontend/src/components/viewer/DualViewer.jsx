@@ -28,9 +28,9 @@ const DualViewer = () => {
   };
 
   return (
-    <div className="h-full flex bg-gray-50">
+    <div className="flex h-full overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col p-6 space-y-4 overflow-hidden">
+      <div className="flex-1 flex flex-col p-6 space-y-4 overflow-hidden bg-gray-50">
         {/* Top Controls */}
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center">
@@ -71,7 +71,7 @@ const DualViewer = () => {
         <ViewerControls />
 
         {/* Dual Viewer Area */}
-        <div className="flex-1 flex gap-6 overflow-hidden">
+        <div className="flex-1 flex gap-6 pr-6 overflow-hidden">
         {/* Left Viewer - Target Protein */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

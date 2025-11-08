@@ -10,7 +10,7 @@ function App() {
 
   return (
     <MainLayout>
-      <div className="h-full flex flex-col">
+      <div className="h-full w-full flex flex-col">
         {/* View Toggle */}
         <div className="flex items-center justify-center p-4 bg-white border-b border-gray-200">
           <div className="inline-flex rounded-lg border border-gray-200 p-1 bg-gray-50">
@@ -40,7 +40,7 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-gray-50">
+        <div className="flex-1 w-full overflow-hidden bg-gray-50">
           {activeView === 'viewer' && <DualViewer />}
           {activeView === 'analysis' && <AnalysisDashboard />}
         </div>
