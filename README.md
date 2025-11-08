@@ -1,33 +1,3 @@
-<<<<<<< HEAD
-# GenLab - AI-Powered Synthetic Organism Design Platform
-
-A modern, beautiful landing page for GenLab, an AI-powered platform that designs custom organisms from concept to manufacturing protocol.
-
-## Features
-
-- **10-Step Design Pipeline**: Complete workflow from prompt to manufacturing
-- **AI-Powered**: LLMs, Transformers, RL agents, and GNNs working together
-- **3D Visualization**: Interactive protein and organism structure viewers
-- **Modern UI**: Built with React, Tailwind CSS, and Framer Motion
-- **Responsive Design**: Works beautifully on all devices
-
-## Tech Stack
-
-- **Frontend**: React 18, Vite
-- **Styling**: Tailwind CSS
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm/yarn
-
-### Installation
-
-1. Install dependencies:
-=======
 # 🧬 Protein Architect - Expressibility-Aware Designer
 
 **Hack Princeton Fall 2025**
@@ -81,7 +51,7 @@ The major bottleneck in biologics development is that AI-designed proteins often
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.9+ (Python 3.11 recommended for better compatibility)
 - Node.js 18+
 - npm or yarn
 
@@ -92,18 +62,27 @@ The major bottleneck in biologics development is that AI-designed proteins often
 cd backend
 ```
 
-2. Create a virtual environment:
+2. Create and activate virtual environment:
 ```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+# Option A: Use installation script (recommended)
+./install.sh
 
-3. Install dependencies:
-```bash
+# Option B: Manual installation
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file (optional, for OpenAI API):
+**Note:** If you encounter Python 3.13 compatibility issues, use Python 3.11:
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
+```
+
+3. Optional: Create a `.env` file for API keys:
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
 AWS_ACCESS_KEY_ID=your_aws_access_key_here
@@ -111,7 +90,7 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret_key_here
 AWS_REGION=us-east-1
 ```
 
-5. Start the backend server:
+4. Start the backend server:
 ```bash
 uvicorn main:app --reload --port 8000
 ```
@@ -126,75 +105,15 @@ cd frontend
 ```
 
 2. Install dependencies:
->>>>>>> fa706d977ef7d4f921f13c15ab41a7e408bc9381
 ```bash
 npm install
 ```
 
-<<<<<<< HEAD
-2. Start the development server:
-=======
 3. Start the development server:
->>>>>>> fa706d977ef7d4f921f13c15ab41a7e408bc9381
 ```bash
 npm run dev
 ```
 
-<<<<<<< HEAD
-3. Open your browser to `http://localhost:3000`
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-The built files will be in the `dist/` directory.
-
-## Project Structure
-
-```
-GenLab/
-├── src/
-│   ├── components/
-│   │   ├── Hero.jsx          # Hero section
-│   │   ├── Navbar.jsx        # Navigation bar
-│   │   ├── Process.jsx       # 10-step pipeline
-│   │   ├── Features.jsx      # Features showcase
-│   │   ├── Visualization.jsx # 3D visualization section
-│   │   ├── Technology.jsx    # Technology stack
-│   │   ├── CTA.jsx           # Call-to-action
-│   │   └── Footer.jsx        # Footer
-│   ├── App.jsx               # Main app component
-│   ├── main.jsx             # Entry point
-│   └── index.css            # Global styles
-├── index.html
-├── package.json
-├── vite.config.js
-└── tailwind.config.js
-```
-
-## Sections
-
-1. **Hero**: Eye-catching introduction with animated background
-2. **Process**: Detailed breakdown of the 10-step design pipeline
-3. **Features**: Key platform capabilities
-4. **Visualization**: 3D visualization capabilities
-5. **Technology**: Complete technology stack overview
-6. **CTA**: Call-to-action section
-7. **Footer**: Links and information
-
-## Customization
-
-- Colors: Edit `tailwind.config.js` to change the color scheme
-- Content: Modify component files in `src/components/`
-- Animations: Adjust Framer Motion animations in component files
-
-## License
-
-MIT
-
-=======
 The frontend will be available at `http://localhost:3000`
 
 ## 📖 Usage
@@ -301,4 +220,3 @@ See LICENSE file for details.
 ## 🙏 Acknowledgments
 
 Built for Hack Princeton Fall 2025. Inspired by the need to bridge the gap between AI-designed proteins and industrial manufacturability.
->>>>>>> fa706d977ef7d4f921f13c15ab41a7e408bc9381

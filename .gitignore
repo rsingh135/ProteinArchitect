@@ -1,33 +1,3 @@
-<<<<<<< HEAD
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
-
-# Testing
-coverage/
-
-# Production
-dist/
-build/
-
-# Misc
-.DS_Store
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Editor
-=======
 # Python
 __pycache__/
 *.py[cod]
@@ -44,34 +14,36 @@ build/
 
 # Node
 node_modules/
+.pnp
+.pnp.js
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
 dist/
 build/
 
 # Environment variables
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.*.local
 
 # IDE
->>>>>>> fa706d977ef7d4f921f13c15ab41a7e408bc9381
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-<<<<<<< HEAD
 # Vite
 .vite/
 
-# SSH Keys
-GenLab
-GenLab.pub
-=======
 # OS
 .DS_Store
 Thumbs.db
@@ -82,6 +54,7 @@ Thumbs.db
 # Coverage
 .coverage
 htmlcov/
+coverage/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -89,5 +62,7 @@ htmlcov/
 # Testing
 .pytest_cache/
 .coverage
->>>>>>> fa706d977ef7d4f921f13c15ab41a7e408bc9381
 
+# SSH Keys (if any)
+GenLab
+GenLab.pub
