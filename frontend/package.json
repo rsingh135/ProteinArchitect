@@ -8,19 +8,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^9.88.13",
+    "@react-three/fiber": "^8.15.11",
+    "@tanstack/react-query": "^5.90.7",
+    "3dmol": "^2.5.3",
+    "axios": "^1.6.2",
+    "framer-motion": "^12.23.24",
+    "lucide-react": "^0.553.0",
+    "molstar": "^3.15.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "three": "^0.158.0",
-    "@react-three/fiber": "^8.15.11",
-    "@react-three/drei": "^9.88.13",
-    "molstar": "^3.15.0",
-    "axios": "^1.6.2"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
     "vite": "^5.0.8"
   }
 }
-
