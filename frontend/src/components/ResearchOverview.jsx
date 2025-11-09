@@ -279,15 +279,17 @@ const ResearchOverview = () => {
   const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   return (
-    <div className={`min-h-screen p-6 transition-colors ${
+    <div className={`h-full overflow-hidden transition-colors ${
       theme === 'dark'
         ? 'bg-gray-900'
         : 'bg-gradient-to-br from-slate-50 to-slate-100'
     }`}>
-      <div className="max-w-7xl mx-auto">
-        {/* Loading State */}
-        {isResearching && (
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
+      {/* Loading State */}
+      {isResearching && (
+        <div className={`flex h-full items-center justify-center transition-colors ${
+          theme === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'
+        }`}>
+          <div className="flex flex-col items-center justify-center">
             <RainbowSpinner size={80} className="mb-6" />
             <h3 className={`text-2xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Researching Protein...</h3>
             <p className={`text-base ${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>Gathering comprehensive information from academic databases and web sources</p>
@@ -297,11 +299,15 @@ const ResearchOverview = () => {
               </p>
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Error Display */}
-        {researchError && (
-          <div className={`border rounded-lg p-4 flex items-center gap-3 transition-colors ${
+      {/* Error Display */}
+      {researchError && !isResearching && (
+        <div className={`h-full flex items-center justify-center p-6 transition-colors ${
+          theme === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'
+        }`}>
+          <div className={`border rounded-lg p-4 flex items-center gap-3 transition-colors max-w-2xl ${
             theme === 'dark'
               ? 'bg-red-900/20 border-red-800/50'
               : 'bg-red-50 border-red-200'
@@ -321,23 +327,30 @@ const ResearchOverview = () => {
               <X className="w-4 h-4" />
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Empty State */}
-        {!researchResults && !isResearching && !researchError && (
-          <div className="flex flex-col items-center justify-center min-h-[400px]">
-            <BookOpen className={`w-16 h-16 mb-4 ${theme === 'dark' ? 'text-gray-500' : 'text-slate-400'}`} />
+      {/* Empty State */}
+      {!researchResults && !isResearching && !researchError && (
+        <div className={`flex h-full items-center justify-center transition-colors ${
+          theme === 'dark' ? 'bg-gray-900' : 'bg-gradient-to-br from-slate-50 to-slate-100'
+        }`}>
+          <div className="flex flex-col items-center justify-center">
+            <BookOpen className={`w-16 h-16 mb-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-500'}`} />
             <h3 className={`text-xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Start Research</h3>
             <p className={theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}>Use the search bar at the top to enter a UniProt protein ID</p>
             <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>Example: P01308 (Human Insulin)</p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Results Section */}
-        {researchResults && !isResearching && (
-          <>
-            {/* Header */}
-            <div className="mb-8">
+      {/* Results Section */}
+      {researchResults && !isResearching && (
+        <div className="h-full overflow-y-auto">
+          <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="mb-8">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-blue-600 rounded-lg">
                   <FileText className="w-6 h-6 text-white" />
@@ -688,9 +701,10 @@ const ResearchOverview = () => {
                 </Card>
               </TabsContent>
             </Tabs>
-          </>
-        )}
-      </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

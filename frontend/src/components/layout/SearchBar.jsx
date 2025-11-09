@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, Sparkles, Loader } from 'lucide-react';
+import { Search, X, Loader, Atom } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
@@ -220,7 +220,7 @@ const SearchBar = () => {
             {isSearching ? (
               <Loader className="w-4 h-4 text-primary-500 animate-spin" />
             ) : (
-              <Sparkles className={`w-4 h-4 ${isFocused ? 'text-primary-500' : 'text-gray-400'}`} />
+              <Atom className={`w-4 h-4 ${isFocused ? 'text-primary-500' : 'text-gray-400'} transition-colors`} />
             )}
           </div>
 
@@ -261,9 +261,15 @@ const SearchBar = () => {
               // Delay hiding to allow click on examples
               setTimeout(() => setIsFocused(false), 200);
             }}
-            placeholder={activeView === 'research' 
-              ? "Enter UniProt ID (e.g., 'P01308') - research starts automatically" 
-              : "Search proteins... e.g., 'human insulin' or 'P01308'"}
+            placeholder={
+              activeView === 'research' 
+                ? "Enter UniProt ID (e.g., P01308)"
+                : activeView === 'analysis'
+                ? "Search two proteins to analyze interactions"
+                : activeView === 'ppi'
+                ? "Search proteins to predict interactions"
+                : "Search by name or UniProt ID (e.g., P01308)"
+            }
             className={`w-full bg-transparent pl-11 pr-24 py-2.5 text-base outline-none ${
               theme === 'dark'
                 ? 'text-white placeholder-gray-400'
