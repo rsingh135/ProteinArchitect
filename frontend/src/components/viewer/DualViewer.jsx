@@ -104,41 +104,41 @@ const DualViewer = () => {
             />
           </div>
 
-          {/* Stats for Target Protein */}
-          {targetProtein && (
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
-                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
+              {/* Stats for Target Protein */}
+              {targetProtein && (
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-gray-700/50 border-gray-700'
+                      : 'bg-blue-50 border-blue-200'
+                  }`}>
+                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Length</div>
+                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
+                    </div>
+                  </div>
+                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-gray-700/50 border-gray-700'
+                      : 'bg-blue-50 border-blue-200'
+                  }`}>
+                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Mass</div>
+                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
+                    </div>
+                  </div>
+                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-gray-700/50 border-gray-700'
+                      : 'bg-blue-50 border-blue-200'
+                  }`}>
+                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>pLDDT</div>
+                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
-                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
-                </div>
-              </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-blue-50 border-blue-200'
-              }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
-                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
-                </div>
-              </div>
-            </div>
-          )}
+              )}
         </motion.div>
 
         {/* Right Viewer - Interaction View (when partner exists) or Partner Search */}
@@ -271,30 +271,30 @@ const DualViewer = () => {
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total Contacts</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Total Contacts</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.totalContacts || 0}
                 </div>
               </div>
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg Distance</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Avg Distance</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.averageDistance ? `${interactionStats.averageDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Closest Contact</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Closest Contact</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.minDistance ? `${interactionStats.minDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
@@ -304,34 +304,34 @@ const DualViewer = () => {
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Length</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${binderProtein.sequence.length} aa` : '--- aa'}
                 </div>
               </div>
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Mass</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${(binderProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
                 </div>
               </div>
               <div className={`py-3 px-2 rounded-lg border transition-colors ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
+                  ? 'bg-gray-700/50 border-gray-700'
                   : 'bg-blue-50 border-blue-200'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>pLDDT</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
                 </div>
-            </div>
+              </div>
             </div>
           ) : null}
         </motion.div>
