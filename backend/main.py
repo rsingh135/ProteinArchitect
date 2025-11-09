@@ -24,6 +24,7 @@ from services.gemini_service import GeminiProteinSearchService
 from services.ppi_service import PPIService
 from services.chat_service import ProteinChatService
 from services.alphafold_ppi_service import AlphaFoldPPIService
+from services.veo_video_service import VeoVideoService
 
 # Initialize agentic research service (optional - may fail if DEDALUS_API_KEY not set)
 try:
@@ -100,6 +101,15 @@ except Exception as e:
     logger.warning(f"Could not initialize AlphaFold PPI service: {e}")
     alphafold_ppi_service = None
 
+# Initialize Veo video service
+try:
+    veo_video_service = VeoVideoService()
+    logger.info("Veo video service initialized successfully")
+except Exception as e:
+    logger.warning(f"Could not initialize Veo video service: {e}")
+    logger.warning("GEMINI_API_KEY is required for video generation")
+    veo_video_service = None
+
 # Global counter for retraining trigger
 protein_generation_count = 0
 
@@ -127,6 +137,19 @@ class PPISequenceRequest(BaseModel):
     sequence_b: str  # Amino acid sequence
     protein_a_name: Optional[str] = None
     protein_b_name: Optional[str] = None
+
+
+class PPIVideoRequest(BaseModel):
+    protein_a_image: Optional[str] = None  # Base64 encoded image
+    protein_b_image: Optional[str] = None  # Base64 encoded image
+    complex_image: Optional[str] = None    # Base64 encoded image
+    protein_a_pdb: Optional[str] = None   # PDB data for Protein A (fallback)
+    protein_b_pdb: Optional[str] = None    # PDB data for Protein B (fallback)
+    complex_pdb: Optional[str] = None     # PDB data for complex (fallback)
+    protein_a_uniprot_id: Optional[str] = None  # UniProt ID for Protein A
+    protein_b_uniprot_id: Optional[str] = None  # UniProt ID for Protein B
+    protein_a_name: Optional[str] = "Protein A"
+    protein_b_name: Optional[str] = "Protein B"
 
 
 class ProteinResearchRequest(BaseModel):
@@ -326,6 +349,63 @@ async def predict_ppi_from_sequences(request: PPISequenceRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error in PPI sequence prediction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate_ppi_video")
+async def generate_ppi_video(request: PPIVideoRequest):
+    """
+    Generate a video of protein-protein interaction using Veo 3.1 Fast Preview API
+    
+    Args:
+        protein_a_image: Base64 encoded image of Protein A
+        protein_b_image: Base64 encoded image of Protein B
+        complex_image: Base64 encoded image of the docked complex
+        protein_a_name: Optional name for Protein A
+        protein_b_name: Optional name for Protein B
+    
+    Returns:
+        Video data (base64 encoded) and mime type
+    """
+    try:
+        if not veo_video_service:
+            raise HTTPException(
+                status_code=503,
+                detail="Veo video service not available. GEMINI_API_KEY is required."
+            )
+        
+        # Validate we have either images or PDB data/UniProt IDs
+        has_images = request.protein_a_image and request.protein_b_image and request.complex_image
+        has_pdb_data = (request.protein_a_pdb or request.protein_a_uniprot_id) and \
+                      (request.protein_b_pdb or request.protein_b_uniprot_id) and \
+                      (request.complex_pdb or (request.protein_a_pdb and request.protein_b_pdb))
+        
+        if not has_images and not has_pdb_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Either images (protein_a_image, protein_b_image, complex_image) or PDB data/UniProt IDs are required"
+            )
+        
+        # Generate video
+        result = await veo_video_service.generate_interaction_video(
+            protein_a_image=request.protein_a_image,
+            protein_b_image=request.protein_b_image,
+            complex_image=request.complex_image,
+            protein_a_pdb=request.protein_a_pdb,
+            protein_b_pdb=request.protein_b_pdb,
+            complex_pdb=request.complex_pdb,
+            protein_a_uniprot_id=request.protein_a_uniprot_id,
+            protein_b_uniprot_id=request.protein_b_uniprot_id,
+            protein_a_name=request.protein_a_name,
+            protein_b_name=request.protein_b_name
+        )
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating PPI video: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -3,9 +3,10 @@ import MainLayout from './components/layout/MainLayout';
 import DualViewer from './components/viewer/DualViewer';
 import AnalysisDashboard from './components/analysis/AnalysisDashboard';
 import ResearchOverview from './components/ResearchOverview';
+import PPIPrediction from './components/PPIPrediction';
 import AIChat from './components/chat/AIChat';
 import ChatButton from './components/chat/ChatButton';
-import { Layers, BarChart3, BookOpen } from 'lucide-react';
+import { Layers, BarChart3, BookOpen, Dna } from 'lucide-react';
 import { useProteinStore } from './store/proteinStore';
 import { useThemeStore } from './store/themeStore';
 
@@ -84,16 +85,32 @@ function App() {
               <BookOpen className="w-5 h-5" />
               <span>Research</span>
             </button>
+            <button
+              onClick={() => setActiveView('ppi')}
+              className={`px-6 py-3 rounded-md text-base font-medium transition-all flex items-center space-x-2 ${
+                activeView === 'ppi'
+                  ? theme === 'dark'
+                    ? 'bg-gray-700 text-blue-400 shadow-sm'
+                    : 'bg-white text-primary-600 shadow-sm'
+                  : theme === 'dark'
+                  ? 'text-gray-300 hover:text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Dna className="w-5 h-5" />
+              <span>PPI Prediction</span>
+            </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className={`flex-1 w-full ${activeView === 'research' ? 'overflow-y-auto' : 'overflow-hidden'} transition-colors ${
+        <div className={`flex-1 w-full ${activeView === 'research' || activeView === 'ppi' ? 'overflow-y-auto' : 'overflow-hidden'} transition-colors ${
           theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
         }`}>
           {activeView === 'viewer' && <DualViewer />}
           {activeView === 'analysis' && <AnalysisDashboard />}
           {activeView === 'research' && <ResearchOverview />}
+          {activeView === 'ppi' && <PPIPrediction />}
         </div>
       </div>
 
