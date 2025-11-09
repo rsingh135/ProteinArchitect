@@ -52,13 +52,8 @@ function App() {
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-<<<<<<< HEAD
-        >
-              <Dna className="w-4 h-4" />
-=======
             >
               <Dna className="w-5 h-5" />
->>>>>>> 252cfa78abefc915a706d266ce8f87d9813dd63b
               <span>PPI Prediction</span>
         </button>
         <button
@@ -68,13 +63,8 @@ function App() {
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-<<<<<<< HEAD
-        >
-              <BookOpen className="w-4 h-4" />
-=======
             >
               <BookOpen className="w-5 h-5" />
->>>>>>> 252cfa78abefc915a706d266ce8f87d9813dd63b
               <span>Research</span>
         </button>
           </div>
