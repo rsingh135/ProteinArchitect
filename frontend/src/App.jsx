@@ -104,7 +104,7 @@ function App() {
         </div>
 
         {/* Content */}
-        <div className={`flex-1 w-full ${activeView === 'research' || activeView === 'ppi' ? 'overflow-y-auto' : 'overflow-hidden'} transition-colors ${
+        <div className={`flex-1 w-full overflow-hidden transition-colors ${
           theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
         }`}>
           {activeView === 'viewer' && <DualViewer />}

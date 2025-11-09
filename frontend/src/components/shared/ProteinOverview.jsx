@@ -195,14 +195,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
             <div>
               <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>UniProt ID</p>
-              <div className="flex items-center justify-between">
-                <p className={`text-base font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{uniprotId}</p>
-                {targetProtein && (
-                  <span className={`px-2 py-1 text-xs font-semibold rounded ${confidenceBadge.color}`}>
-                    {confidenceBadge.label}
-                  </span>
-                )}
-              </div>
+              <p className={`text-base font-mono ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{uniprotId}</p>
             </div>
 
             <div>

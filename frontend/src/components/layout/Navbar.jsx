@@ -23,7 +23,7 @@ const Navbar = () => {
           <span className={`text-base hidden md:block font-medium ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
           }`}>
-            AI-Powered Molecular Design
+            AI-Powered Molecular Discovery
           </span>
         </div>
 
