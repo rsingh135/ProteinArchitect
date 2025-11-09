@@ -95,6 +95,7 @@ const ProteinViewerModal = ({
                   height="100%"
                   onResidueSelect={setSelectedResidue}
                   onViewerStateChange={setViewerState}
+                  showOverlays={true}
                 />
 
                 {/* Confidence Badge */}

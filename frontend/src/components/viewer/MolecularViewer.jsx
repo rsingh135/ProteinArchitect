@@ -9,6 +9,7 @@ const MolecularViewer = ({
   onViewerReady,
   onResidueSelect,
   onViewerStateChange,
+  showOverlays = true, // Control whether to show overlay panels
 }) => {
   const viewerRef = useRef(null);
   const viewerInstanceRef = useRef(null);
@@ -349,64 +350,66 @@ const MolecularViewer = ({
             }}
           />
           
-          {/* Control Panel - Compact */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              right: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
-              borderRadius: '6px',
-              padding: '6px 8px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-              fontSize: '10px',
-              zIndex: 10,
-              maxWidth: '140px',
-            }}
-          >
-            <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
-              Interactions
+          {/* Control Panel - Compact - Only show if overlays enabled */}
+          {showOverlays && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                borderRadius: '6px',
+                padding: '6px 8px',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                fontSize: '10px',
+                zIndex: 10,
+                maxWidth: '140px',
+              }}
+            >
+              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                Interactions
+              </div>
+              
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+                <input
+                  type="checkbox"
+                  checked={showDisulfides}
+                  onChange={(e) => setShowDisulfides(e.target.checked)}
+                  style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
+                />
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '10px', height: '10px', backgroundColor: '#FFD700', borderRadius: '2px', display: 'inline-block' }}></span>
+                  S-S
+                </span>
+              </label>
+              
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+                <input
+                  type="checkbox"
+                  checked={showHBonds}
+                  onChange={(e) => setShowHBonds(e.target.checked)}
+                  style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
+                />
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '10px', height: '2px', backgroundColor: '#00CED1', display: 'inline-block' }}></span>
+                  H-Bond
+                </span>
+              </label>
+              
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+                <input
+                  type="checkbox"
+                  checked={showLabels}
+                  onChange={(e) => setShowLabels(e.target.checked)}
+                  style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
+                />
+                Labels
+              </label>
             </div>
-            
-            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
-              <input
-                type="checkbox"
-                checked={showDisulfides}
-                onChange={(e) => setShowDisulfides(e.target.checked)}
-                style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
-              />
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '10px', height: '10px', backgroundColor: '#FFD700', borderRadius: '2px', display: 'inline-block' }}></span>
-                S-S
-              </span>
-            </label>
-            
-            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
-              <input
-                type="checkbox"
-                checked={showHBonds}
-                onChange={(e) => setShowHBonds(e.target.checked)}
-                style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
-              />
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '10px', height: '2px', backgroundColor: '#00CED1', display: 'inline-block' }}></span>
-                H-Bond
-              </span>
-            </label>
-            
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
-              <input
-                type="checkbox"
-                checked={showLabels}
-                onChange={(e) => setShowLabels(e.target.checked)}
-                style={{ marginRight: '6px', cursor: 'pointer', width: '12px', height: '12px' }}
-              />
-              Labels
-            </label>
-          </div>
+          )}
           
-          {/* Structure Info Panel - Compact */}
-          {structureInfo && !selectedResidue && (
+          {/* Structure Info Panel - Compact - Only show if overlays enabled */}
+          {showOverlays && structureInfo && !selectedResidue && (
             <div
               style={{
                 position: 'absolute',
@@ -439,7 +442,7 @@ const MolecularViewer = ({
             </div>
           )}
 
-          {/* Selected Residue Info */}
+          {/* Selected Residue Info - Always show when selected */}
           {selectedResidue && (
             <div
               style={{
@@ -468,23 +471,25 @@ const MolecularViewer = ({
             </div>
           )}
           
-          {/* Instructions */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '12px',
-              right: '12px',
-              backgroundColor: 'rgba(0, 0, 0, 0.75)',
-              borderRadius: '6px',
-              padding: '8px 12px',
-              color: '#ffffff',
-              fontSize: '11px',
-              zIndex: 10,
-              fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-            }}
-          >
-            💡 Click • Drag • Scroll to zoom
-          </div>
+          {/* Instructions - Only show if overlays enabled */}
+          {showOverlays && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '12px',
+                right: '12px',
+                backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                color: '#ffffff',
+                fontSize: '11px',
+                zIndex: 10,
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+              }}
+            >
+              💡 Click • Drag • Scroll to zoom
+            </div>
+          )}
         </>
       ) : (
         <div
