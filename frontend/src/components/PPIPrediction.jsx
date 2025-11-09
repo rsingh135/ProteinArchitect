@@ -758,36 +758,110 @@ const PPIPrediction = () => {
     });
   };
 
-  // Fetch PDB data from AlphaFold
+  // Fetch PDB data from AlphaFold with multiple fallbacks
   const fetchPDBFromAlphaFold = async (uniprotId) => {
     if (!uniprotId) {
       console.warn('No UniProt ID provided for PDB fetch');
       return null;
     }
     
+    // Normalize UniProt ID (remove spaces, convert to uppercase)
+    const normalizedId = uniprotId.trim().toUpperCase();
+    
+    // Try multiple model versions (v4, v3, v2)
+    const versions = ['v4', 'v3', 'v2'];
+    
+    for (const version of versions) {
+      try {
+        const pdbUrl = `https://alphafold.ebi.ac.uk/files/AF-${normalizedId}-F1-model_${version}.pdb`;
+        console.log(`📥 Trying to fetch PDB from: ${pdbUrl}`);
+        
+        const response = await fetch(pdbUrl, {
+          method: 'GET',
+          mode: 'cors',
+          cache: 'no-cache'
+        });
+        
+        if (response.ok) {
+          const pdbData = await response.text();
+          // Check if we got valid PDB data (should have ATOM records)
+          if (pdbData && pdbData.length > 100 && pdbData.includes('ATOM')) {
+            console.log(`✅ Successfully fetched PDB for ${normalizedId} (${version}, ${pdbData.length} chars)`);
+            return pdbData;
+          } else {
+            console.warn(`PDB data invalid for ${normalizedId} (${version}): too short or no ATOM records`);
+          }
+        } else {
+          console.log(`PDB not found for ${normalizedId} (${version}): ${response.status} ${response.statusText}`);
+        }
+      } catch (err) {
+        console.warn(`Error fetching PDB for ${normalizedId} (${version}):`, err.message);
+      }
+    }
+    
+    // Fallback: Try AlphaFold API to get PDB URL
     try {
-      const pdbUrl = `https://alphafold.ebi.ac.uk/files/AF-${uniprotId}-F1-model_v4.pdb`;
-      console.log(`Fetching PDB from: ${pdbUrl}`);
-      const response = await fetch(pdbUrl, {
+      console.log(`📥 Trying AlphaFold API for ${normalizedId}...`);
+      const apiUrl = `https://alphafold.ebi.ac.uk/api/prediction/${normalizedId}`;
+      const apiResponse = await fetch(apiUrl, {
         method: 'GET',
         mode: 'cors',
         cache: 'no-cache'
       });
       
-      if (response.ok) {
-        const pdbData = await response.text();
-        if (pdbData && pdbData.length > 100) {
-          console.log(`✅ Successfully fetched PDB for ${uniprotId} (${pdbData.length} chars)`);
-          return pdbData;
-        } else {
-          console.warn(`PDB data too short for ${uniprotId}`);
+      if (apiResponse.ok) {
+        const apiData = await apiResponse.json();
+        
+        // AlphaFold API returns an array of predictions
+        if (apiData && Array.isArray(apiData) && apiData.length > 0) {
+          const prediction = apiData[0];
+          
+          // Try to get PDB URL from API response
+          if (prediction.pdbUrl) {
+            console.log(`📥 Fetching PDB from API URL: ${prediction.pdbUrl}`);
+            const pdbResponse = await fetch(prediction.pdbUrl, {
+              method: 'GET',
+              mode: 'cors',
+              cache: 'no-cache'
+            });
+            
+            if (pdbResponse.ok) {
+              const pdbData = await pdbResponse.text();
+              if (pdbData && pdbData.length > 100 && pdbData.includes('ATOM')) {
+                console.log(`✅ Successfully fetched PDB via API for ${normalizedId} (${pdbData.length} chars)`);
+                return pdbData;
+              }
+            }
+          }
+          
+          // Try CIF format as fallback (if PDB not available)
+          if (prediction.cifUrl) {
+            console.log(`📥 Trying CIF format: ${prediction.cifUrl}`);
+            const cifResponse = await fetch(prediction.cifUrl, {
+              method: 'GET',
+              mode: 'cors',
+              cache: 'no-cache'
+            });
+            
+            if (cifResponse.ok) {
+              const cifData = await cifResponse.text();
+              if (cifData && cifData.length > 100) {
+                console.log(`✅ Successfully fetched CIF for ${normalizedId} (${cifData.length} chars)`);
+                // Convert CIF to PDB-like format or return as-is
+                // For now, return CIF data (3Dmol.js can handle both)
+                return cifData;
+              }
+            }
+          }
         }
       } else {
-        console.warn(`PDB not found for ${uniprotId}: ${response.status} ${response.statusText}`);
+        console.warn(`AlphaFold API request failed for ${normalizedId}: ${apiResponse.status} ${apiResponse.statusText}`);
       }
     } catch (err) {
-      console.warn(`Could not fetch PDB for ${uniprotId}:`, err);
+      console.warn(`Error fetching from AlphaFold API for ${normalizedId}:`, err.message);
     }
+    
+    console.error(`❌ Could not fetch PDB data for ${normalizedId} from any source`);
     return null;
   };
 

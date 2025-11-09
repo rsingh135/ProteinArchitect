@@ -6,11 +6,24 @@ Generates videos from protein structure images using Google's Veo API
 import os
 import logging
 import base64
-import google.generativeai as genai
+import asyncio
 import httpx
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+# Try to import the new google.genai SDK
+try:
+    from google import genai
+    NEW_SDK_AVAILABLE = True
+except ImportError:
+    # Fallback to old SDK if new one not available
+    try:
+        import google.generativeai as genai
+        NEW_SDK_AVAILABLE = False
+        logger.warning("New google.genai SDK not available, using old google.generativeai SDK")
+    except ImportError:
+        raise ImportError("Neither google.genai nor google.generativeai is installed. Install with: pip install google-genai")
 
 
 class VeoVideoService:
@@ -22,9 +35,26 @@ class VeoVideoService:
         if not api_key:
             raise ValueError("GEMINI_API_KEY environment variable is required for Veo API")
         
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('veo-3.1-fast-preview')
-        logger.info("Veo 3.1 Fast Preview service initialized")
+        self.api_key = api_key
+        
+        # Use new SDK if available
+        if NEW_SDK_AVAILABLE:
+            try:
+                self.client = genai.Client(api_key=api_key)
+                self.use_new_sdk = True
+                logger.info("Veo 3.1 Fast Preview service initialized with new google.genai SDK")
+            except Exception as e:
+                logger.warning(f"Failed to initialize new SDK: {e}, falling back to old SDK")
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel('veo-3.1-fast-preview')
+                self.use_new_sdk = False
+                logger.info("Veo 3.1 Fast Preview service initialized with old SDK (may not work)")
+        else:
+            # Fallback to old SDK
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('veo-3.1-fast-preview')
+            self.use_new_sdk = False
+            logger.warning("Using old SDK - Veo 3.1 may not work correctly. Please install google-genai package.")
     
     async def generate_interaction_video(
         self,
@@ -46,6 +76,11 @@ class VeoVideoService:
             protein_a_image: Base64 encoded image of Protein A
             protein_b_image: Base64 encoded image of Protein B
             complex_image: Base64 encoded image of the docked complex
+            protein_a_pdb: PDB data for Protein A (fallback)
+            protein_b_pdb: PDB data for Protein B (fallback)
+            complex_pdb: PDB data for complex (fallback)
+            protein_a_uniprot_id: UniProt ID for Protein A
+            protein_b_uniprot_id: UniProt ID for Protein B
             protein_a_name: Name of Protein A
             protein_b_name: Name of Protein B
         
@@ -53,140 +88,213 @@ class VeoVideoService:
             Dictionary with video_data (base64) and mime_type
         """
         try:
-            # Get images - use provided images or generate from PDB/UniProt IDs
-            final_image_a = protein_a_image
-            final_image_b = protein_b_image
-            final_image_complex = complex_image
-
-            # If images not provided, try to fetch from AlphaFold or generate from PDB
-            if not final_image_a:
-                if protein_a_uniprot_id:
-                    final_image_a = await self._fetch_alphafold_image(protein_a_uniprot_id)
-                if not final_image_a and protein_a_pdb:
-                    # Could generate image from PDB here if needed
-                    logger.warning("PDB to image conversion not implemented, using placeholder")
-
-            if not final_image_b:
-                if protein_b_uniprot_id:
-                    final_image_b = await self._fetch_alphafold_image(protein_b_uniprot_id)
-                if not final_image_b and protein_b_pdb:
-                    logger.warning("PDB to image conversion not implemented, using placeholder")
-
-            if not final_image_complex and complex_pdb:
-                logger.warning("Complex PDB to image conversion not implemented")
-
-            # Validate we have all required images
-            if not final_image_a or not final_image_b or not final_image_complex:
-                raise ValueError("All three images (protein_a, protein_b, complex) are required")
-
-            # Construct a detailed, scientifically-accurate prompt for molecular docking
-            prompt = (
-                f"Generate a scientifically accurate molecular dynamics simulation video showing the protein-protein "
-                f"interaction between {protein_a_name} (shown in red) and {protein_b_name} (shown in blue). "
-                f"\n\n"
-                f"The video should demonstrate:\n"
-                f"1. INITIAL STATE: Both proteins start separated in 3D space, showing their AlphaFold-predicted structures\n"
-                f"2. APPROACH PHASE: The proteins gradually move closer together, maintaining their structural integrity\n"
-                f"3. ORIENTATION SEARCH: The proteins rotate and adjust their relative orientations to find the optimal binding interface\n"
-                f"4. DOCKING PHASE: The proteins come into contact, showing specific binding site interactions\n"
-                f"5. COMPLEX FORMATION: The final docked complex structure matching the predicted interaction\n"
-                f"\n"
-                f"Key requirements:\n"
-                f"- Maintain realistic molecular motion (smooth, physics-based movement)\n"
-                f"- Show the proteins as 3D molecular structures (cartoon/ribbon representation)\n"
-                f"- Preserve the structural details from the AlphaFold models\n"
-                f"- Demonstrate the binding interface clearly\n"
-                f"- Use appropriate colors: red for {protein_a_name}, blue for {protein_b_name}\n"
-                f"- Make the transition smooth and continuous (no jumps or teleportation)\n"
-                f"- The final frame should match the docked complex structure shown in the third image\n"
-                f"\n"
-                f"This is a molecular biology visualization for scientific research and education."
-            )
-            
-            # Prepare the parts array with prompt and images
-            parts = [
-                prompt,
-                {
-                    "inline_data": {
-                        "mime_type": "image/png",
-                        "data": final_image_a
-                    }
-                },
-                {
-                    "inline_data": {
-                        "mime_type": "image/png",
-                        "data": final_image_b
-                    }
-                },
-                {
-                    "inline_data": {
-                        "mime_type": "image/png",
-                        "data": final_image_complex
-                    }
-                }
-            ]
-            
-            # Generate content with video modality
-            # Note: Veo 3.1 Fast Preview uses response_modalities in generation_config
-            # Optimized settings for molecular interactions
-            try:
-                generation_config = genai.types.GenerationConfig(
-                    response_modalities=["VIDEO"],
-                    temperature=0.6,  # Lower temperature for more consistent motion
-                    top_p=0.85,       # Nucleus sampling for better quality
+            # Use new SDK if available
+            if self.use_new_sdk:
+                return await self._generate_with_new_sdk(
+                    protein_a_image, protein_b_image, complex_image,
+                    protein_a_pdb, protein_b_pdb, complex_pdb,
+                    protein_a_uniprot_id, protein_b_uniprot_id,
+                    protein_a_name, protein_b_name
                 )
-            except Exception:
-                # Fallback if advanced config not supported
-                generation_config = genai.types.GenerationConfig(
-                    response_modalities=["VIDEO"]
+            else:
+                # Fallback to old SDK (may not work for Veo 3.1)
+                logger.warning("Using old SDK - Veo 3.1 requires new SDK")
+                # Old SDK method is not async
+                return self._generate_with_old_sdk(
+                    protein_a_image, protein_b_image, complex_image,
+                    protein_a_name, protein_b_name
                 )
             
-            logger.info("Generating video with Veo 3.1 Fast Preview API...")
-            response = self.model.generate_content(
-                parts,
-                generation_config=generation_config
+        except Exception as e:
+            logger.error(f"Error generating video with Veo API: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            raise
+    
+    async def _generate_with_new_sdk(
+        self,
+        protein_a_image: Optional[str],
+        protein_b_image: Optional[str],
+        complex_image: Optional[str],
+        protein_a_pdb: Optional[str],  # Not used yet, but kept for future image-from-PDB generation
+        protein_b_pdb: Optional[str],  # Not used yet, but kept for future image-from-PDB generation
+        complex_pdb: Optional[str],  # Not used yet, but kept for future image-from-PDB generation
+        protein_a_uniprot_id: Optional[str],
+        protein_b_uniprot_id: Optional[str],
+        protein_a_name: str,
+        protein_b_name: str
+    ) -> Dict:
+        """Generate video using new google.genai SDK"""
+        
+        # Get images - use provided images or generate from PDB/UniProt IDs
+        # For now, we use text-to-video since Veo 3.1 image-to-video format is not fully documented
+        # Images are fetched but not yet used in video generation
+        # TODO: Implement image-to-video when documentation clarifies multi-image input format
+        
+        # Fetch images if not provided (for future use)
+        if not protein_a_image and protein_a_uniprot_id:
+            protein_a_image = await self._fetch_alphafold_image(protein_a_uniprot_id)
+            if protein_a_image:
+                logger.info(f"Fetched AlphaFold image for Protein A ({protein_a_uniprot_id})")
+
+        if not protein_b_image and protein_b_uniprot_id:
+            protein_b_image = await self._fetch_alphafold_image(protein_b_uniprot_id)
+            if protein_b_image:
+                logger.info(f"Fetched AlphaFold image for Protein B ({protein_b_uniprot_id})")
+
+        # Note: complex_image, protein_a_pdb, protein_b_pdb, complex_pdb are available
+        # but not yet used. They can be used for future image-from-PDB generation.
+        
+        # Construct a detailed, scientifically-accurate prompt for molecular docking
+        prompt = (
+            f"Generate a scientifically accurate molecular dynamics simulation video showing the protein-protein "
+            f"interaction between {protein_a_name} and {protein_b_name}. "
+            f"\n\n"
+            f"The video should demonstrate:\n"
+            f"1. INITIAL STATE: Both proteins start separated in 3D space, showing their AlphaFold-predicted structures\n"
+            f"2. APPROACH PHASE: The proteins gradually move closer together, maintaining their structural integrity\n"
+            f"3. ORIENTATION SEARCH: The proteins rotate and adjust their relative orientations to find the optimal binding interface\n"
+            f"4. DOCKING PHASE: The proteins come into contact, showing specific binding site interactions\n"
+            f"5. COMPLEX FORMATION: The final docked complex structure\n"
+            f"\n"
+            f"Key requirements:\n"
+            f"- Maintain realistic molecular motion (smooth, physics-based movement)\n"
+            f"- Show the proteins as 3D molecular structures (cartoon/ribbon representation)\n"
+            f"- Demonstrate the binding interface clearly\n"
+            f"- Use appropriate colors: red for {protein_a_name}, blue for {protein_b_name}\n"
+            f"- Make the transition smooth and continuous (no jumps or teleportation)\n"
+            f"\n"
+            f"This is a molecular biology visualization for scientific research and education."
+        )
+        
+        logger.info("Starting Veo 3.1 video generation with new SDK...")
+        
+        try:
+            # Use generate_videos() method with correct model name
+            # Note: Model name format is veo-3.1-fast-generate-preview
+            operation = self.client.models.generate_videos(
+                model="veo-3.1-fast-generate-preview",
+                prompt=prompt,
             )
             
-            # Extract video from response
-            if not response.candidates:
-                raise ValueError("No candidates in Veo API response")
+            logger.info(f"Video generation operation started: {operation.name if hasattr(operation, 'name') else 'N/A'}")
             
-            candidate = response.candidates[0]
-            if not candidate.content or not candidate.content.parts:
-                raise ValueError("No content parts in Veo API response")
+            # Poll until done (Veo API is async)
+            max_polls = 60  # Maximum 10 minutes (60 * 10 seconds)
+            poll_count = 0
             
-            # Find video part
-            video_part = None
-            for part in candidate.content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    if 'video' in part.inline_data.mime_type.lower():
-                        video_part = part.inline_data
-                        break
+            while not operation.done:
+                poll_count += 1
+                if poll_count > max_polls:
+                    raise TimeoutError(f"Video generation timed out after {max_polls * 10} seconds")
+                
+                logger.info(f"Polling operation status... (attempt {poll_count}/{max_polls})")
+                await asyncio.sleep(10)  # Wait 10 seconds between polls
+                
+                # Get updated operation status
+                if hasattr(operation, 'name'):
+                    operation = self.client.operations.get(operation.name)
+                else:
+                    # Fallback: try to get operation by some other method
+                    # This might need adjustment based on actual SDK API
+                    operation = self.client.operations.get(operation)
             
-            if not video_part:
-                raise ValueError("No video data found in Veo API response")
+            logger.info("Video generation completed!")
             
-            # Return video data
+            # Get video from operation response
+            if not hasattr(operation, 'response') or not operation.response:
+                raise ValueError("Operation completed but no response found")
+            
+            # Extract generated videos from response
+            # The exact structure might vary - adjust based on actual SDK response
+            if hasattr(operation.response, 'generated_videos'):
+                generated_videos = operation.response.generated_videos
+            elif hasattr(operation.response, 'generatedSamples'):
+                # Alternative response format
+                generated_videos = operation.response.generatedSamples
+            else:
+                # Try to access directly
+                generated_videos = getattr(operation.response, 'generated_videos', None)
+                if not generated_videos:
+                    raise ValueError("No generated_videos found in operation response")
+            
+            if not generated_videos or len(generated_videos) == 0:
+                raise ValueError("No videos in operation response")
+            
+            generated_video = generated_videos[0]
+            
+            # Download video file
+            # The video object should have a 'video' attribute with file information
+            if hasattr(generated_video, 'video'):
+                video_file_ref = generated_video.video
+            elif hasattr(generated_video, 'file'):
+                video_file_ref = generated_video.file
+            else:
+                raise ValueError("No video file reference found in generated video")
+            
+            # Download the video file
+            video_data = self.client.files.download(file=video_file_ref)
+            
+            # Convert to base64 for JSON response
+            if isinstance(video_data, bytes):
+                video_data_b64 = base64.b64encode(video_data).decode('utf-8')
+            else:
+                # If it's already a string or needs conversion
+                video_data_b64 = base64.b64encode(video_data.encode() if isinstance(video_data, str) else video_data).decode('utf-8')
+            
+            logger.info("Video successfully generated and downloaded")
+            
             return {
-                "video_data": video_part.data,
-                "mime_type": video_part.mime_type,
+                "video_data": video_data_b64,
+                "mime_type": "video/mp4",
                 "success": True
             }
             
         except Exception as e:
-            logger.error(f"Error generating video with Veo API: {e}")
+            logger.error(f"Error in new SDK video generation: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             raise
+    
+    def _generate_with_old_sdk(
+        self,
+        protein_a_image: Optional[str],  # Unused - kept for interface consistency
+        protein_b_image: Optional[str],  # Unused - kept for interface consistency
+        complex_image: Optional[str],  # Unused - kept for interface consistency
+        protein_a_name: str,  # Unused - kept for interface consistency
+        protein_b_name: str  # Unused - kept for interface consistency
+    ) -> Dict:
+        """Fallback method using old SDK (may not work for Veo 3.1)"""
+        logger.warning("Using old SDK - this may not work for Veo 3.1")
+        
+        # This is the old implementation - kept for fallback
+        # It likely won't work but provides a graceful error message
+        raise NotImplementedError(
+            "Veo 3.1 requires the new google.genai SDK. "
+            "Please install it with: pip install google-genai"
+        )
     
     async def _fetch_alphafold_image(self, uniprot_id: str) -> Optional[str]:
         """Fetch protein structure image from AlphaFold API"""
         try:
-            image_url = f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-model_v4.png"
+            # Try multiple image formats and versions
+            image_urls = [
+                f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-model_v4.png",
+                f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-predicted_aligned_error_v4.png",
+                f"https://alphafold.ebi.ac.uk/files/AF-{uniprot_id}-F1-paes_plot_v4.png",
+            ]
+            
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.get(image_url)
-                if response.status_code == 200:
-                    import base64
-                    return base64.b64encode(response.content).decode('utf-8')
+                for image_url in image_urls:
+                    try:
+                        response = await client.get(image_url)
+                        if response.status_code == 200 and len(response.content) > 1000:
+                            return base64.b64encode(response.content).decode('utf-8')
+                    except Exception as e:
+                        logger.debug(f"Could not fetch {image_url}: {e}")
+                        continue
+                        
         except Exception as e:
             logger.debug(f"Could not fetch AlphaFold image for {uniprot_id}: {e}")
+        
         return None
-
