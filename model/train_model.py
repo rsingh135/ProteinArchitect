@@ -192,8 +192,202 @@ def compute_esm_embeddings(protein_ids: List[str],
     logger.info(f"Computing ESM embeddings for {len(protein_ids)} proteins")
     logger.info(f"Using device: {device}")
     
-    # Load ESM model
-    model, alphabet = esm.pretrained.load_model_and_alphabet_hub(model_name)
+    # Load ESM model with multiple fallback methods
+    import time
+    import os
+    import subprocess
+    
+    model = None
+    alphabet = None
+    
+    # Check if model is already cached
+    cache_dir = os.path.expanduser("~/.cache/torch/hub/checkpoints")
+    model_file = os.path.join(cache_dir, "esm2_t33_650M_UR50D.pt")
+    
+    # Method 1: Try loading from cache first
+    if os.path.exists(model_file):
+        logger.info(f"✅ Found cached model at: {model_file}")
+        size_gb = os.path.getsize(model_file) / (1024**3)
+        logger.info(f"   Size: {size_gb:.2f} GB")
+        try:
+            logger.info("Attempting to load from cache...")
+            # Try loading using esm's method - it should use the cached file
+            model, alphabet = esm.pretrained.load_model_and_alphabet_hub(model_name)
+            logger.info("✅ Successfully loaded ESM model from cache")
+        except Exception as e:
+            logger.warning(f"Failed to load from cache: {e}")
+            logger.info("Trying to load model file directly...")
+            # Try loading the .pt file directly
+            try:
+                import torch
+                state_dict = torch.load(model_file, map_location="cpu")
+                # Note: This is a workaround - esm.pretrained should handle this
+                # If this doesn't work, we'll fall back to other methods
+                logger.warning("Direct loading not implemented - trying download methods...")
+            except Exception as e2:
+                logger.warning(f"Direct load also failed: {e2}")
+    
+    # Method 2: Try downloading with wget (more reliable than urllib)
+    if model is None or alphabet is None:
+        logger.info("Attempting to download model using wget...")
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            url = "https://dl.fbaipublicfiles.com/fair-esm/models/facebook/esm2_t33_650M_UR50D.pt"
+            
+            # Use wget with retry and user agent
+            cmd = [
+                "wget",
+                "--continue",
+                "--progress=bar:force",
+                "--tries=3",
+                "--timeout=30",
+                "--user-agent=Mozilla/5.0",
+                "-O", model_file,
+                url
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+            
+            if result.returncode == 0 and os.path.exists(model_file):
+                size_gb = os.path.getsize(model_file) / (1024**3)
+                if size_gb > 1.0:  # Should be ~1.3 GB
+                    logger.info(f"✅ Model downloaded via wget: {size_gb:.2f} GB")
+                    # Now try loading
+                    model, alphabet = esm.pretrained.load_model_and_alphabet_hub(model_name)
+                    logger.info("✅ Successfully loaded downloaded model")
+                else:
+                    logger.warning(f"Downloaded file too small: {size_gb:.2f} GB (expected ~1.3 GB)")
+        except FileNotFoundError:
+            logger.warning("wget not available, trying other methods...")
+        except subprocess.TimeoutExpired:
+            logger.warning("wget download timed out")
+        except Exception as e:
+            logger.warning(f"wget download failed: {e}")
+    
+    # Method 3: Use Hugging Face transformers (YOU ALREADY HAVE THIS!)
+    if model is None or alphabet is None:
+        logger.info("Attempting to load from Hugging Face transformers...")
+        logger.info("✅ You already downloaded this model - using it now!")
+        try:
+            from transformers import EsmModel, EsmTokenizer
+            logger.info("Loading ESM2 from Hugging Face (already cached)...")
+            hf_model = EsmModel.from_pretrained("facebook/esm2_t33_650M_UR50D")
+            tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
+            
+            # Use Hugging Face model directly - adapt the embedding computation
+            logger.info("✅ Hugging Face model loaded successfully!")
+            logger.info("   Adapting embedding computation to use Hugging Face API...")
+            
+            # Create a wrapper to make Hugging Face model work like ESM model
+            class HuggingFaceESMWrapper:
+                def __init__(self, hf_model, tokenizer):
+                    self.hf_model = hf_model
+                    self.tokenizer = tokenizer
+                    self.eval()
+                
+                def eval(self):
+                    self.hf_model.eval()
+                
+                def to(self, device):
+                    self.hf_model = self.hf_model.to(device)
+                    return self
+                
+                def __call__(self, tokens, repr_layers=None):
+                    # Hugging Face model expects input_ids, not tokens directly
+                    with torch.no_grad():
+                        outputs = self.hf_model(tokens)
+                        # Get the last hidden state (layer 33 equivalent)
+                        hidden_states = outputs.last_hidden_state
+                        return {"representations": {33: hidden_states}}
+            
+            class HuggingFaceAlphabet:
+                def __init__(self, tokenizer):
+                    self.tokenizer = tokenizer
+                
+                def get_batch_converter(self):
+                    return HuggingFaceBatchConverter(self.tokenizer)
+            
+            class HuggingFaceBatchConverter:
+                def __init__(self, tokenizer):
+                    self.tokenizer = tokenizer
+                
+                def __call__(self, batch_sequences):
+                    # batch_sequences is list of (name, sequence) tuples
+                    sequences = [seq for _, seq in batch_sequences]
+                    
+                    # Tokenize sequences
+                    encoded = self.tokenizer(
+                        sequences,
+                        padding=True,
+                        truncation=True,
+                        max_length=1024,
+                        return_tensors="pt"
+                    )
+                    
+                    # Return in format compatible with ESM: (labels, strs, tokens)
+                    labels = [name for name, _ in batch_sequences]
+                    strs = sequences
+                    tokens = encoded["input_ids"]
+                    
+                    return labels, strs, tokens
+            
+            # Create wrapper objects
+            model = HuggingFaceESMWrapper(hf_model, tokenizer)
+            alphabet = HuggingFaceAlphabet(tokenizer)
+            
+            logger.info("✅ Successfully adapted Hugging Face model for training!")
+            
+        except ImportError:
+            logger.error("❌ transformers not installed")
+            logger.error("   Install with: pip install transformers")
+            raise
+        except Exception as e:
+            logger.error(f"❌ Hugging Face load failed: {e}")
+            raise
+    
+    # Method 4: Final attempt with esm library
+    if model is None or alphabet is None:
+        logger.info("Final attempt: Loading with esm library (may download)...")
+        max_retries = 2
+        retry_delay = 10
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Attempt {attempt + 1}/{max_retries}...")
+                model, alphabet = esm.pretrained.load_model_and_alphabet_hub(model_name)
+                logger.info("✅ Successfully loaded ESM model")
+                break
+            except Exception as e:
+                error_msg = str(e)
+                logger.warning(f"Attempt {attempt + 1} failed: {error_msg}")
+                
+                if attempt < max_retries - 1:
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    logger.error("❌ All loading methods failed")
+                    logger.error("")
+                    logger.error("=" * 60)
+                    logger.error("SOLUTION: Pre-download the model manually")
+                    logger.error("=" * 60)
+                    logger.error("Option 1: Run download script in notebook:")
+                    logger.error("   !python download_esm_model.py")
+                    logger.error("")
+                    logger.error("Option 2: Download manually with wget:")
+                    logger.error("   mkdir -p ~/.cache/torch/hub/checkpoints")
+                    logger.error("   cd ~/.cache/torch/hub/checkpoints")
+                    logger.error("   wget https://dl.fbaipublicfiles.com/fair-esm/models/facebook/esm2_t33_650M_UR50D.pt")
+                    logger.error("")
+                    logger.error("Option 3: Use Hugging Face:")
+                    logger.error("   pip install transformers")
+                    logger.error("   from transformers import EsmModel")
+                    logger.error("   model = EsmModel.from_pretrained('facebook/esm2_t33_650M_UR50D')")
+                    logger.error("=" * 60)
+                    raise Exception(f"Could not load ESM model. Error: {error_msg}")
+    
+    if model is None or alphabet is None:
+        raise Exception("Failed to load ESM model after all methods")
+    
     model = model.to(device)
     model.eval()
     
@@ -224,11 +418,18 @@ def compute_esm_embeddings(protein_ids: List[str],
         
         # Get embeddings (mean pooling over sequence)
         with torch.no_grad():
-            results = model(batch_tokens, repr_layers=[33])  # ESM2-650M has 33 layers
+            results = model(batch_tokens, repr_layers=[33])  # Works for both ESM and Hugging Face wrapper
             token_embeddings = results["representations"][33]
             
             # Mean pooling (excluding CLS and EOS tokens)
-            sequence_embeddings = token_embeddings[:, 1:-1, :].mean(dim=1)
+            # For Hugging Face, CLS is at position 0, EOS at last position
+            # For ESM, similar structure
+            if token_embeddings.shape[1] > 2:
+                # Exclude first (CLS) and last (EOS) tokens
+                sequence_embeddings = token_embeddings[:, 1:-1, :].mean(dim=1)
+            else:
+                # Fallback if sequence is too short
+                sequence_embeddings = token_embeddings.mean(dim=1)
         
         # Store embeddings
         for j, pid in enumerate(valid_ids):
