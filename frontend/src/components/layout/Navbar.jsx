@@ -11,10 +11,10 @@ const Navbar = () => {
       <div className="flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <h1 className="text-2xl font-display font-bold text-gray-900 tracking-tight">
+          <h1 className="text-3xl font-display font-bold text-gray-900 tracking-tight">
             ProteinArchitect
           </h1>
-          <span className="text-gray-500 text-sm hidden md:block font-medium">
+          <span className="text-gray-500 text-base hidden md:block font-medium">
             AI-Powered Molecular Design
           </span>
         </div>

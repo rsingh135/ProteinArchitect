@@ -1,7 +1,14 @@
-import React from 'react';
-import { BookOpen, FileText, FlaskConical, Sparkles, AlertCircle, ExternalLink, CheckCircle2, Loader2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { FileText, Beaker, BookOpen, ExternalLink, CheckCircle2, Loader2, AlertCircle, FlaskConical } from 'lucide-react';
 import { useProteinStore } from '../store/proteinStore';
-import './ResearchOverview.css';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs';
+import { Badge } from './ui/badge';
+import { Separator } from './ui/separator';
+import { PaperCard } from './PaperCard';
+import { ReferenceCard } from './ReferenceCard';
+import RainbowSpinner from './ui/RainbowSpinner';
+import { cleanMarkdown, renderMarkdownLinks } from '../utils/markdownParser.jsx';
 
 const ResearchOverview = () => {
   const { 
@@ -11,291 +18,540 @@ const ResearchOverview = () => {
     researchError
   } = useProteinStore();
 
-  const formatCitations = (citations) => {
-    if (!citations || citations.length === 0) return null;
-    return (
-      <div className="citations-list">
-        {citations.map((citation, idx) => (
-          <div key={idx} className="citation-item">
-            <span className="citation-number">[{citation.number}]</span>
-            <span className="citation-title">{citation.title}</span>
-            {citation.url && (
-              <a href={citation.url} target="_blank" rel="noopener noreferrer" className="citation-link">
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const extractSectionCitations = (sectionText, allCitations) => {
-    if (!sectionText || !allCitations) return [];
-    // Extract citation numbers mentioned in the section text
-    const citationNumbers = new Set();
-    const lines = sectionText.split('\n');
-    
-    for (const line of lines) {
-      // Match patterns like [1], [2], etc.
-      const matches = line.match(/\[(\d+)\]/g);
-      if (matches) {
-        matches.forEach(match => {
-          const num = match.replace(/[\[\]]/g, '');
-          citationNumbers.add(num);
-        });
-      }
+  // Parse papers - use structured_papers if available, otherwise parse from text
+  const parsedPapers = useMemo(() => {
+    // First try to use structured_papers from backend
+    if (researchResults?.structured_papers && researchResults.structured_papers.length > 0) {
+      return researchResults.structured_papers.map((p, idx) => ({
+        title: p.title || `Paper ${idx + 1}`,
+        authors: p.authors || '',
+        journal: p.journal || 'Not specified',
+        year: p.year || new Date().getFullYear().toString(),
+        doi: p.doi || 'Not available',
+        link: p.link || '',
+        description: p.description || p.title || '',
+        citationNumber: p.citationNumber || (idx + 1).toString(),
+        isRecent: p.year && parseInt(p.year) >= new Date().getFullYear() - 2
+      }));
     }
     
-    // Return citations that are referenced in this section
-    return allCitations.filter(citation => citationNumbers.has(citation.number));
-  };
+    // Fallback: parse from text
+    if (!researchResults?.papers || researchResults.papers === 'No papers section found') {
+      return [];
+    }
+
+    const papers = [];
+    const lines = researchResults.papers.split('\n');
+    let currentPaper = null;
+    let citationNum = null;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Look for citation numbers like [1], [2], etc.
+      const citationMatch = trimmed.match(/\[(\d+)\]/);
+      if (citationMatch) {
+        citationNum = citationMatch[1];
+      }
+
+      // Look for titles (usually lines that are longer and don't start with special chars)
+      if (trimmed.length > 20 && !trimmed.startsWith('-') && !trimmed.startsWith('•') && 
+          !trimmed.match(/^(Authors?|Journal|Year|DOI|PMID|Link):/i)) {
+        if (currentPaper && currentPaper.title) {
+          papers.push(currentPaper);
+        }
+        currentPaper = {
+          title: trimmed.replace(/^\[?\d+\]?\s*/, '').trim(),
+          citationNumber: citationNum || null,
+          authors: '',
+          journal: '',
+          year: '',
+          doi: '',
+          link: '',
+          description: ''
+        };
+        citationNum = null;
+      } else if (currentPaper) {
+        // Extract authors
+        const authorsMatch = trimmed.match(/^(Authors?|Author):\s*(.+)/i);
+        if (authorsMatch) {
+          currentPaper.authors = authorsMatch[2].trim();
+        }
+        // Extract journal
+        const journalMatch = trimmed.match(/^(Journal|Journal Name):\s*(.+)/i);
+        if (journalMatch) {
+          currentPaper.journal = journalMatch[2].trim();
+        }
+        // Extract year
+        const yearMatch = trimmed.match(/^(Year|Published):\s*(\d{4})/i);
+        if (yearMatch) {
+          currentPaper.year = yearMatch[2];
+        }
+        // Extract DOI/PMID
+        const doiMatch = trimmed.match(/^(DOI|PMID):\s*(.+)/i);
+        if (doiMatch) {
+          currentPaper.doi = doiMatch[2].trim();
+        }
+        // Extract link/URL
+        const urlMatch = trimmed.match(/(https?:\/\/[^\s\)]+)/);
+        if (urlMatch && !currentPaper.link) {
+          currentPaper.link = urlMatch[1];
+        }
+        // Extract description (lines that don't match other patterns)
+        if (!authorsMatch && !journalMatch && !yearMatch && !doiMatch && !urlMatch && 
+            trimmed.length > 10 && !trimmed.startsWith('-') && !trimmed.startsWith('•')) {
+          if (!currentPaper.description) {
+            currentPaper.description = trimmed;
+          }
+        }
+      }
+    }
+
+    if (currentPaper && currentPaper.title) {
+      papers.push(currentPaper);
+    }
+
+    // If no papers found, try to extract from citations
+    if (papers.length === 0 && researchResults.citations) {
+      return researchResults.citations
+        .filter(cit => cit.url && (cit.url.includes('pubmed') || cit.url.includes('doi') || cit.url.includes('.pdf') || cit.url.includes('arxiv')))
+        .map((cit, idx) => ({
+          title: cit.title || `Paper ${idx + 1}`,
+          authors: '',
+          journal: '',
+          year: new Date().getFullYear().toString(),
+          doi: cit.url.includes('doi') ? cit.url : '',
+          link: cit.url,
+          description: cit.title,
+          citationNumber: cit.number,
+          isRecent: false
+        }));
+    }
+
+    return papers.map((p, idx) => ({
+      ...p,
+      journal: p.journal || 'Not specified',
+      year: p.year || new Date().getFullYear().toString(),
+      doi: p.doi || 'Not available',
+      link: p.link || '',
+      description: p.description || p.title,
+      citationNumber: p.citationNumber || (idx + 1).toString(),
+      isRecent: p.year && parseInt(p.year) >= new Date().getFullYear() - 2
+    }));
+  }, [researchResults]);
+
+  // Parse references - use structured_references if available, otherwise parse from text
+  const parsedReferences = useMemo(() => {
+    // First try to use structured_references from backend
+    if (researchResults?.structured_references && researchResults.structured_references.length > 0) {
+      return researchResults.structured_references.map((ref, idx) => ({
+        name: ref.name || `Reference ${idx + 1}`,
+        url: ref.url || '',
+        description: ref.description || `Provides information about ${ref.name || 'this resource'}`,
+        citationNumber: ref.citationNumber || (idx + 1).toString()
+      }));
+    }
+    
+    // Fallback: parse from text
+    if (!researchResults?.research_references || researchResults.research_references === 'No research references section found') {
+      return [];
+    }
+
+    const references = [];
+    const lines = researchResults.research_references.split('\n');
+    let currentRef = null;
+    let citationNum = null;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const citationMatch = trimmed.match(/\[(\d+)\]/);
+      if (citationMatch) {
+        citationNum = citationMatch[1];
+      }
+
+      // Look for database names (UniProt, RCSB, NCBI, etc.)
+      const dbMatch = trimmed.match(/^(UniProt|RCSB|NCBI|PDB|PubMed|Gene|Ensembl|KEGG|Reactome|STRING|IntAct)/i);
+      if (dbMatch || (trimmed.length > 10 && !trimmed.startsWith('-') && !trimmed.startsWith('•'))) {
+        if (currentRef && currentRef.name) {
+          references.push(currentRef);
+        }
+        currentRef = {
+          name: trimmed.replace(/^\[?\d+\]?\s*/, '').split(' - ')[0].split(':')[0].trim(),
+          url: '',
+          description: '',
+          citationNumber: citationNum || null
+        };
+        citationNum = null;
+      } else if (currentRef) {
+        const urlMatch = trimmed.match(/(https?:\/\/[^\s\)]+)/);
+        if (urlMatch) {
+          currentRef.url = urlMatch[1];
+        }
+        if (trimmed.length > 10 && !urlMatch && !trimmed.match(/^(URL|Link|Description):/i)) {
+          currentRef.description = (currentRef.description + ' ' + trimmed).trim();
+        }
+      }
+    }
+
+    if (currentRef && currentRef.name) {
+      references.push(currentRef);
+    }
+
+    // If no references found, try to extract from citations
+    if (references.length === 0 && researchResults.citations) {
+      return researchResults.citations
+        .filter(cit => cit.url && (cit.url.includes('uniprot') || cit.url.includes('rcsb') || cit.url.includes('ncbi') || cit.url.includes('ensembl')))
+        .map((cit, idx) => ({
+          name: cit.title || `Database ${idx + 1}`,
+          url: cit.url,
+          description: cit.title || 'Database resource',
+          citationNumber: cit.number
+        }));
+    }
+
+    return references.map((ref, idx) => ({
+      ...ref,
+      description: ref.description || `Provides information about ${ref.name}`,
+      citationNumber: ref.citationNumber || (idx + 1).toString()
+    }));
+  }, [researchResults]);
+
+  // Extract key findings, research status, and applications from summary
+  const extractSummaryData = useMemo(() => {
+    if (!researchResults?.summary || researchResults.summary === 'No summary section found') {
+      return {
+        keyFindings: [],
+        researchStatus: [],
+        applications: []
+      };
+    }
+
+    const summary = researchResults.summary;
+    const keyFindings = [];
+    const researchStatus = [];
+    const applications = [];
+
+    // Extract bullet points or key phrases
+    const lines = summary.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.match(/^\d+\./)) {
+        const content = trimmed.replace(/^[•\-\d+\.]\s*/, '').trim();
+        if (content.length > 10) {
+          if (content.toLowerCase().includes('pathway') || content.toLowerCase().includes('function') || 
+              content.toLowerCase().includes('mechanism') || content.toLowerCase().includes('role')) {
+            keyFindings.push(content);
+          } else if (content.toLowerCase().includes('paper') || content.toLowerCase().includes('study') || 
+                     content.toLowerCase().includes('research') || content.toLowerCase().includes('database')) {
+            researchStatus.push(content);
+          } else if (content.toLowerCase().includes('application') || content.toLowerCase().includes('therapeutic') || 
+                     content.toLowerCase().includes('drug') || content.toLowerCase().includes('clinical')) {
+            applications.push(content);
+          }
+        }
+      }
+    }
+
+    // Fallback: extract sentences
+    if (keyFindings.length === 0) {
+      const sentences = summary.split(/[.!?]/).filter(s => s.trim().length > 20);
+      keyFindings.push(...sentences.slice(0, 4).map(s => s.trim()));
+    }
+
+    return {
+      keyFindings: keyFindings.slice(0, 4),
+      researchStatus: researchStatus.slice(0, 4),
+      applications: applications.slice(0, 4)
+    };
+  }, [researchResults]);
+
+  // Get current date for badge
+  const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
   return (
-    <div className="research-overview">
-      <div className="research-header">
-        <div className="header-content">
-          <BookOpen className="w-6 h-6 text-primary-600" />
-          <div>
-            <h2>Research Overview</h2>
-            <p className="text-sm text-gray-600">Comprehensive AI-powered research on proteins using academic papers and web sources</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="research-container">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Loading State */}
         {isResearching && (
-          <div className="research-loading">
-            <div className="loading-content">
-              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-              <div className="loading-text">
-                <h3>Researching Protein...</h3>
-                <p>Gathering comprehensive information from academic databases and web sources</p>
-                {researchQuery && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Researching: <span className="font-mono font-semibold">{researchQuery}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="loading-progress-bar">
-              <div className="loading-progress-fill"></div>
-            </div>
-            <div className="loading-steps">
-              <div className="loading-step">
-                <div className="step-dot active"></div>
-                <span>Searching academic databases...</span>
-              </div>
-              <div className="loading-step">
-                <div className="step-dot"></div>
-                <span>Analyzing research papers...</span>
-              </div>
-              <div className="loading-step">
-                <div className="step-dot"></div>
-                <span>Compiling results...</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Info Section - Only show when not researching and no results */}
-        {!isResearching && !researchResults && (
-          <div className="research-info-section">
-            <div className="info-card">
-              <Sparkles className="w-5 h-5 text-primary-600" />
-              <div>
-                <h3>Use the Search Bar Above</h3>
-                <p>Enter a UniProt protein ID (e.g., P01308) in the main search bar to start comprehensive AI-powered research.</p>
-                {researchQuery && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Current search: <span className="font-mono font-semibold">{researchQuery}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Results Section */}
-        {researchResults && (
-          <div className="research-results">
-            <div className="results-header">
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-              <h3>Research Results for {researchResults.protein_id}</h3>
-            </div>
-
-            {/* Academic Papers */}
-            {researchResults.papers && researchResults.papers !== 'No papers section found' && (
-              <div className="results-section">
-                <h4>
-                  <BookOpen className="w-4 h-4" />
-                  Academic Papers & Publications
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.papers, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.papers}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* Use Cases */}
-            {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' && (
-              <div className="results-section">
-                <h4>
-                  <FlaskConical className="w-4 h-4" />
-                  Use Cases & Applications
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.use_cases, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.use_cases}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* Drug Development */}
-            {researchResults.drug_development && researchResults.drug_development !== 'No drug development section found' && (
-              <div className="results-section">
-                <h4>
-                  <FlaskConical className="w-4 h-4" />
-                  Drug Development & Therapeutics
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.drug_development, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.drug_development}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* Research References */}
-            {researchResults.research_references && researchResults.research_references !== 'No research references section found' && (
-              <div className="results-section">
-                <h4>
-                  <FileText className="w-4 h-4" />
-                  Research References & Citations
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.research_references, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.research_references}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* Novel Research */}
-            {researchResults.novel_research && researchResults.novel_research !== 'No novel research section found' && (
-              <div className="results-section">
-                <h4>
-                  <Sparkles className="w-4 h-4" />
-                  Novel Research (Recent)
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.novel_research, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.novel_research}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* Summary */}
-            {researchResults.summary && researchResults.summary !== 'No summary section found' && (
-              <div className="results-section summary-section">
-                <h4>
-                  <Sparkles className="w-4 h-4" />
-                  AI Summary
-                </h4>
-                {(() => {
-                  const sectionCitations = extractSectionCitations(researchResults.summary, researchResults.citations);
-                  return sectionCitations.length > 0 && (
-                    <div className="section-citations">
-                      <h5>References:</h5>
-                      {formatCitations(sectionCitations)}
-                    </div>
-                  );
-                })()}
-                <div className="section-content">
-                  <pre className="research-text">{researchResults.summary}</pre>
-                </div>
-              </div>
-            )}
-
-            {/* All Citations at the end (for reference) */}
-            {researchResults.citations && researchResults.citations.length > 0 && (
-              <div className="results-section all-citations-section">
-                <h4>
-                  <FileText className="w-4 h-4" />
-                  All Citations & Sources
-                </h4>
-                {formatCitations(researchResults.citations)}
-              </div>
+          <div className="flex flex-col items-center justify-center min-h-[400px]">
+            <RainbowSpinner size={80} className="mb-6" />
+            <h3 className="text-2xl font-medium text-slate-900 mb-2">Researching Protein...</h3>
+            <p className="text-slate-600 text-base">Gathering comprehensive information from academic databases and web sources</p>
+            {researchQuery && (
+              <p className="text-base text-slate-500 mt-2">
+                Researching: <span className="font-mono font-semibold">{researchQuery}</span>
+              </p>
             )}
           </div>
         )}
 
         {/* Error Display */}
         {researchError && (
-          <div className="error-message">
-            <AlertCircle className="w-5 h-5" />
-            <span>{researchError}</span>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-900">{researchError}</span>
           </div>
         )}
 
         {/* Empty State */}
         {!researchResults && !isResearching && !researchError && (
-          <div className="empty-state">
-            <BookOpen className="w-12 h-12 text-gray-400" />
-            <h3>Start Research</h3>
-            <p>Use the search bar at the top to enter a UniProt protein ID</p>
-            <p className="text-sm text-gray-500 mt-2">Example: P01308 (Human Insulin)</p>
+          <div className="flex flex-col items-center justify-center min-h-[400px]">
+            <BookOpen className="w-16 h-16 text-slate-400 mb-4" />
+            <h3 className="text-xl font-medium text-slate-900 mb-2">Start Research</h3>
+            <p className="text-slate-600">Use the search bar at the top to enter a UniProt protein ID</p>
+            <p className="text-sm text-slate-500 mt-2">Example: P01308 (Human Insulin)</p>
           </div>
         )}
 
-        {/* Loading State */}
-        {isResearching && (
-          <div className="empty-state">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mb-4"></div>
-            <h3>Researching...</h3>
-            <p>Gathering comprehensive information about {researchQuery}</p>
-            <p className="text-sm text-gray-500 mt-2">This may take a few minutes</p>
-          </div>
+        {/* Results Section */}
+        {researchResults && !isResearching && (
+          <>
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-medium text-slate-900">Research Overview Dashboard</h1>
+              </div>
+              <p className="text-slate-600 ml-14 text-lg">Comprehensive analysis of Protein {researchResults.protein_id}</p>
+              <div className="flex gap-2 mt-4 ml-14">
+                <Badge variant="outline" className="bg-white">Protein Research</Badge>
+                <Badge variant="outline" className="bg-white">{researchResults.protein_id}</Badge>
+                <Badge variant="outline" className="bg-white">Updated: {currentDate}</Badge>
+              </div>
+            </div>
+
+            {/* Summary Section - Always Visible */}
+            <Card className="shadow-lg border-slate-200 mb-6 bg-gradient-to-br from-white to-blue-50">
+              <CardHeader>
+                <CardTitle>Comprehensive Summary</CardTitle>
+                <CardDescription>Overview of findings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-white/80 backdrop-blur rounded-lg p-6 border border-slate-200">
+                  <p className="text-slate-700 leading-relaxed mb-6 text-base">
+                    {researchResults.summary && researchResults.summary !== 'No summary section found' 
+                      ? researchResults.summary.substring(0, 500) + (researchResults.summary.length > 500 ? '...' : '')
+                      : 'Summary information will be displayed here once research is complete.'}
+                  </p>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <div className="bg-white border border-slate-200 rounded-lg p-4">
+                      <h3 className="text-slate-900 mb-2 font-medium text-base">Key Findings</h3>
+                      <ul className="space-y-1 text-slate-600 text-base">
+                        {extractSummaryData.keyFindings.length > 0 ? (
+                          extractSummaryData.keyFindings.map((finding, idx) => (
+                            <li key={idx}>• {finding.substring(0, 60)}{finding.length > 60 ? '...' : ''}</li>
+                          ))
+                        ) : (
+                          <li>• Analysis in progress</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-lg p-4">
+                      <h3 className="text-slate-900 mb-2 font-medium text-base">Research Status</h3>
+                      <ul className="space-y-1 text-slate-600 text-base">
+                        <li>• {parsedPapers.length} key papers identified</li>
+                        <li>• {parsedReferences.length} major database entries</li>
+                        <li>• {researchResults.citations?.length || 0} total citations</li>
+                        <li>• Active research area</li>
+                      </ul>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-lg p-4">
+                      <h3 className="text-slate-900 mb-2 font-medium text-base">Applications</h3>
+                      <ul className="space-y-1 text-slate-600 text-base">
+                        {extractSummaryData.applications.length > 0 ? (
+                          extractSummaryData.applications.map((app, idx) => (
+                            <li key={idx}>• {app.substring(0, 60)}{app.length > 60 ? '...' : ''}</li>
+                          ))
+                        ) : (
+                          <>
+                            <li>• {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' ? 'Use cases identified' : 'Further research needed'}</li>
+                            <li>• {researchResults.drug_development && researchResults.drug_development !== 'No drug development section found' ? 'Therapeutic potential' : 'No drugs identified yet'}</li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabbed Content */}
+            <Tabs defaultValue="papers" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 mb-6 h-auto p-1 bg-white shadow-sm">
+                <TabsTrigger value="papers" className="flex items-center gap-2 py-3 text-base">
+                  <FileText className="w-5 h-5" />
+                  Academic Papers
+                </TabsTrigger>
+                <TabsTrigger value="applications" className="flex items-center gap-2 py-3 text-base">
+                  <Beaker className="w-5 h-5" />
+                  Applications & Therapeutics
+                </TabsTrigger>
+                <TabsTrigger value="references" className="flex items-center gap-2 py-3 text-base">
+                  <BookOpen className="w-5 h-5" />
+                  References & Citations
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Academic Papers Tab */}
+              <TabsContent value="papers">
+                <Card className="shadow-lg border-slate-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      Academic Papers & Publications
+                    </CardTitle>
+                    <CardDescription>Key research papers related to Protein {researchResults.protein_id}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {parsedPapers.length > 0 ? (
+                      parsedPapers.map((paper, index) => (
+                        <PaperCard key={index} paper={paper} number={index + 1} />
+                      ))
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+                        <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                        <p className="text-slate-600">No papers found in the research results.</p>
+                        <p className="text-slate-500 text-sm mt-2">Papers will appear here once identified.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Applications & Therapeutics Tab */}
+              <TabsContent value="applications">
+                <div className="space-y-6">
+                  <Card className="shadow-lg border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Beaker className="w-5 h-5 text-green-600" />
+                        Use Cases & Applications
+                      </CardTitle>
+                      <CardDescription>Clinical and industrial applications</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' ? (
+                        <>
+                          <div className="bg-white border border-slate-200 rounded-lg p-4">
+                            <div className="prose prose-sm max-w-none">
+                              <pre className="whitespace-pre-wrap text-slate-700 font-sans text-sm leading-relaxed">
+                                {researchResults.use_cases}
+                              </pre>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                          <p className="text-amber-900">
+                            Based on initial searches, no clear specific use cases, clinical or industrial applications are immediately apparent. Further targeted searches would be needed.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-lg border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <FlaskConical className="w-5 h-5 text-purple-600" />
+                        Drug Development & Therapeutics
+                      </CardTitle>
+                      <CardDescription>Therapeutic applications and drug discovery</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {researchResults.drug_development && researchResults.drug_development !== 'No drug development section found' ? (
+                        <div className="bg-white border border-slate-200 rounded-lg p-4">
+                          <div className="prose prose-sm max-w-none">
+                            <div className="whitespace-pre-wrap text-slate-700 font-sans text-sm leading-relaxed">
+                              {renderMarkdownLinks(cleanMarkdown(researchResults.drug_development))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+                          <FlaskConical className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                          <p className="text-slate-600">
+                            No specific drug development information was found in the search results.
+                          </p>
+                          <p className="text-slate-500 text-sm mt-2">
+                            Further research may be required to identify therapeutic applications.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* References & Citations Tab */}
+              <TabsContent value="references">
+                <Card className="shadow-lg border-slate-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-indigo-600" />
+                      References & Citations
+                    </CardTitle>
+                    <CardDescription>Essential databases, resources, and all cited sources</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="mb-4 text-slate-900 font-medium">Database Resources</h3>
+                      <div className="space-y-4">
+                        {parsedReferences.length > 0 ? (
+                          parsedReferences.map((ref, index) => (
+                            <ReferenceCard key={index} reference={ref} />
+                          ))
+                        ) : (
+                          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
+                            <p className="text-slate-600">No database resources found.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <h3 className="mb-4 text-slate-900 font-medium">All Citations</h3>
+                      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                        {researchResults.citations && researchResults.citations.length > 0 ? (
+                          <ol className="space-y-3 text-sm">
+                            {researchResults.citations.map((citation) => (
+                              <li key={citation.number} className="flex gap-3">
+                                <span className="text-slate-500 shrink-0">[{citation.number}]</span>
+                                <div className="flex-1">
+                                  <p className="text-slate-700">{citation.title}</p>
+                                  {citation.url && (
+                                    <a
+                                      href={citation.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors text-xs break-all mt-1"
+                                    >
+                                      <ExternalLink className="w-3 h-3 shrink-0" />
+                                      {citation.url}
+                                    </a>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="text-slate-600">No citations available.</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
         )}
       </div>
     </div>
@@ -303,4 +559,3 @@ const ResearchOverview = () => {
 };
 
 export default ResearchOverview;
-

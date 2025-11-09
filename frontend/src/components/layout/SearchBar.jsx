@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, Sparkles, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
 import { ProteinService } from '../../services/proteinService';
@@ -11,6 +11,7 @@ const SearchBar = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
   
   const { 
     setTargetProtein, 
@@ -159,10 +160,24 @@ const SearchBar = () => {
   };
 
   // Handle clicking on example - this triggers the search directly
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleExampleClick = (exampleText) => {
     console.log('📌 Example clicked:', exampleText);
     setQuery(exampleText);
     setIsFocused(false);
+    
+    // Clear any pending timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
     
     // Perform search immediately (routes based on active view)
     handleSearch(exampleText);
@@ -198,8 +213,26 @@ const SearchBar = () => {
             type="text"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
+              const newValue = e.target.value;
+              setQuery(newValue);
               setError(null);
+              
+              // Clear any existing timeout
+              if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+              }
+              
+              // Auto-trigger research when on research tab and valid UniProt ID is entered
+              if (activeView === 'research' && newValue.trim()) {
+                // Check if it looks like a UniProt ID (alphanumeric, typically 6-10 chars)
+                const uniprotPattern = /^[A-Z0-9]{6,10}$/i;
+                if (uniprotPattern.test(newValue.trim())) {
+                  // Debounce: wait 1 second after user stops typing
+                  searchTimeoutRef.current = setTimeout(() => {
+                    handleSearch(newValue.trim());
+                  }, 1000);
+                }
+              }
             }}
             onFocus={() => setIsFocused(true)}
             onBlur={() => {
@@ -207,9 +240,9 @@ const SearchBar = () => {
               setTimeout(() => setIsFocused(false), 200);
             }}
             placeholder={activeView === 'research' 
-              ? "Search for research... e.g., 'P01308' (UniProt ID)" 
+              ? "Enter UniProt ID (e.g., 'P01308') - research starts automatically" 
               : "Search proteins... e.g., 'human insulin' or 'P01308'"}
-            className="w-full bg-transparent pl-11 pr-24 py-2.5 text-sm text-gray-900 placeholder-gray-500 outline-none"
+            className="w-full bg-transparent pl-11 pr-24 py-2.5 text-base text-gray-900 placeholder-gray-500 outline-none"
             disabled={isSearching || isResearching}
           />
 
@@ -227,7 +260,7 @@ const SearchBar = () => {
           <button
             type="submit"
             disabled={isSearching || isResearching || !query.trim()}
-            className="absolute right-2 px-4 py-1.5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute right-2 px-4 py-1.5 rounded-md bg-primary-600 text-white text-base font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {(isSearching || isResearching) ? (
               <Loader className="w-4 h-4 animate-spin" />
@@ -240,7 +273,7 @@ const SearchBar = () => {
       
       {/* Loading message for research */}
       {isResearching && activeView === 'research' && (
-        <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-50 flex items-center gap-2">
+        <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-blue-50 border border-blue-200 rounded-lg text-base text-blue-700 z-50 flex items-center gap-2">
           <Loader className="w-4 h-4 animate-spin" />
           <span>Researching protein... This may take 2-5 minutes. Please wait...</span>
         </div>
@@ -248,7 +281,7 @@ const SearchBar = () => {
 
       {/* Error message */}
       {error && (
-        <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 z-50">
+        <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-red-50 border border-red-200 rounded-lg text-base text-red-700 z-50">
           {error}
         </div>
       )}
@@ -262,7 +295,7 @@ const SearchBar = () => {
             e.preventDefault();
           }}
         >
-          <p className="text-xs text-gray-600 mb-2 font-medium">Try these examples:</p>
+          <p className="text-sm text-gray-600 mb-2 font-medium">Try these examples:</p>
           <div className="space-y-1">
             {examples.map((example, i) => (
               <button
@@ -275,8 +308,8 @@ const SearchBar = () => {
                 }}
                 className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 transition-colors cursor-pointer"
               >
-                <span className="text-sm font-mono text-primary-600">{example.text}</span>
-                <span className="text-xs text-gray-500 ml-2">- {example.desc}</span>
+                <span className="text-base font-mono text-primary-600">{example.text}</span>
+                <span className="text-sm text-gray-500 ml-2">- {example.desc}</span>
               </button>
             ))}
           </div>
