@@ -122,6 +122,30 @@ const DualViewer = () => {
               showOverlays={false}
             />
           </div>
+          
+          {/* Stats for Target Protein */}
+          {targetProtein && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Length</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
+                </div>
+              </div>
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Mass</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
+                </div>
+              </div>
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">pLDDT</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Right Viewer - Interaction View (when partner exists) or Partner Search */}
@@ -233,34 +257,50 @@ const DualViewer = () => {
             )}
           </div>
 
-          {/* Interaction Stats - Only show in expanded view, not in unexpanded */}
-
-          {/* Quick Stats (shown when only partner is present, no target) */}
-          {binderProtein && !targetProtein && (
+          {/* Stats for Interaction/Partner - 3 stats, symmetrical with left side */}
+          {binderProtein && targetProtein && interactionStats ? (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
-                <div className="text-xs text-gray-600 mb-1">Length</div>
-                <div className="text-sm font-semibold text-gray-900">
-                  {binderProtein.sequence.length} aa
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Total Contacts</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {interactionStats.totalContacts || 0}
                 </div>
               </div>
-              <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
-                <div className="text-xs text-gray-600 mb-1">Mass</div>
-                <div className="text-sm font-semibold text-gray-900">
-                  {(binderProtein.sequence.length * 110 / 1000).toFixed(1)} kDa
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Avg Distance</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {interactionStats.averageDistance ? `${interactionStats.averageDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
-              <div className="text-center py-3 rounded-lg bg-gray-50 border border-gray-200">
-                <div className="text-xs text-gray-600 mb-1">pLDDT</div>
-                <div className={`text-sm font-semibold ${
-                  binderProtein.metrics.plddt >= 70 ? 'text-blue-600' : 
-                  binderProtein.metrics.plddt >= 50 ? 'text-blue-400' : 'text-blue-300'
-                }`}>
-                  {binderProtein.metrics.plddt.toFixed(1)}
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Closest Contact</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {interactionStats.minDistance ? `${interactionStats.minDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
             </div>
-          )}
+          ) : binderProtein ? (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Length</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {binderProtein.sequence ? `${binderProtein.sequence.length} aa` : '--- aa'}
+                </div>
+              </div>
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">Mass</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {binderProtein.sequence ? `${(binderProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
+                </div>
+              </div>
+              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="text-xs text-gray-600 mb-1 text-center">pLDDT</div>
+                <div className="text-sm font-semibold text-gray-900 text-center">
+                  {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </motion.div>
         </div>
       </div>

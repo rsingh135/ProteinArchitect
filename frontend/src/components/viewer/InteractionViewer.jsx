@@ -248,10 +248,11 @@ const InteractionViewer = ({
   
   // Initialize MD simulation
   const initializeSimulation = (viewer) => {
-    if (!targetPdbData || !partnerPdbData) {
-      console.warn('Cannot initialize simulation: missing PDB data', { 
+    if (!targetPdbData || !partnerPdbData || !viewer) {
+      console.warn('Cannot initialize simulation: missing data', { 
         hasTarget: !!targetPdbData, 
-        hasPartner: !!partnerPdbData
+        hasPartner: !!partnerPdbData,
+        hasViewer: !!viewer
       });
       return;
     }
@@ -262,23 +263,18 @@ const InteractionViewer = ({
     }
     
     try {
-      console.log('Initializing MD simulation...', {
-        targetAtoms: targetPdbData.split('\n').filter(l => l.startsWith('ATOM')).length,
-        partnerAtoms: partnerPdbData.split('\n').filter(l => l.startsWith('ATOM')).length
-      });
+      console.log('🚀 Initializing MD simulation with 3Dmol.js transformations...');
       
       const simulation = new MolecularDynamicsSimulation(
         targetPdbData,
         partnerPdbData,
         {
           temperature: simulationTemperature,
-          dt: 0.1 * simulationSpeed, // MUCH larger time step for guaranteed visible movement
-          onUpdate: (targetAtoms, partnerAtoms) => {
-            // Update viewer with new positions - CRITICAL: This must be called
-            // Call directly, don't wait for animation frame
-            if (viewerInstanceRef.current && targetAtoms && partnerAtoms && targetAtoms.length > 0 && partnerAtoms.length > 0) {
-              // Update immediately
-              updateViewerPositions(viewerInstanceRef.current, targetAtoms, partnerAtoms);
+          speed: simulationSpeed,
+          onUpdate: (newTargetPdb, newPartnerPdb) => {
+            // Update viewer by reloading models with new coordinates
+            if (viewerInstanceRef.current && newTargetPdb && newPartnerPdb) {
+              updateViewerWithNewPDB(viewerInstanceRef.current, newTargetPdb, newPartnerPdb);
             }
           },
           onStatsUpdate: (stats) => {
@@ -321,106 +317,40 @@ const InteractionViewer = ({
     }
   };
   
-  // Update PDB data from atom positions
-  const updatePDBFromAtoms = (originalPdb, atoms) => {
-    const lines = originalPdb.split('\n');
-    let atomIndex = 0;
-    const result = [];
-    
-    for (const line of lines) {
-      if (line.startsWith('ATOM ') || line.startsWith('HETATM')) {
-        if (atomIndex < atoms.length) {
-          const atom = atoms[atomIndex];
-          const newLine = 
-            line.substring(0, 30) +
-            atom.x.toFixed(3).padStart(8) +
-            atom.y.toFixed(3).padStart(8) +
-            atom.z.toFixed(3).padStart(8) +
-            line.substring(54);
-          result.push(newLine);
-          atomIndex++;
-        } else {
-          result.push(line);
-        }
-      } else {
-        result.push(line);
-      }
-    }
-    
-    return result.join('\n');
-  };
-  
-  // Update viewer with new atom positions (throttled for performance)
-  const updateViewerPositions = (viewer, targetAtoms, partnerAtoms) => {
-    if (!viewer || !targetAtoms || !partnerAtoms || targetAtoms.length === 0 || partnerAtoms.length === 0) {
+  // Update viewer with new PDB data - RELIABLE METHOD that definitely shows movement
+  const updateViewerWithNewPDB = (viewer, newTargetPdb, newPartnerPdb) => {
+    if (!viewer || !newTargetPdb || !newPartnerPdb) {
+      console.warn('Cannot update viewer: missing data', {
+        hasViewer: !!viewer,
+        hasTargetPdb: !!newTargetPdb,
+        hasPartnerPdb: !!newPartnerPdb
+      });
       return;
     }
     
-    // Throttle updates to ~20fps for better performance
+    // Throttle updates to ~30fps for smooth animation
     const now = Date.now();
-    if (now - lastUpdateTimeRef.current < 50) return; // ~20fps
+    if (now - lastUpdateTimeRef.current < 33) return; // ~30fps
     lastUpdateTimeRef.current = now;
     
     try {
-      // Verify atoms have actually moved
-      const sampleAtom = targetAtoms[0];
-      if (sampleAtom && (sampleAtom.x === undefined || isNaN(sampleAtom.x))) {
-        console.error('Invalid atom data:', sampleAtom);
-        return;
-      }
-      
-      // Convert atoms to PDB format
-      const newTargetPdb = updatePDBFromAtoms(targetPdbData, targetAtoms);
-      const newPartnerPdb = updatePDBFromAtoms(partnerPdbData, partnerAtoms);
-      
-      if (!newTargetPdb || !newPartnerPdb || newTargetPdb.length < 100 || newPartnerPdb.length < 100) {
-        console.warn('Invalid PDB data generated', {
-          targetLength: newTargetPdb?.length || 0,
-          partnerLength: newPartnerPdb?.length || 0
-        });
-        return;
-      }
-      
-      // Store current styles and interactions state
+      // Store current state
       const currentSelectedResidue = selectedResidue;
       const currentShowInteractions = showInteractions;
       
-      // Remove old models - SIMPLIFIED: just remove and re-add
+      // Remove old models
       try {
-        // Clear all models
         viewer.removeAll();
       } catch (e) {
-        // If removeAll doesn't work, try removing individually
-        try {
-          viewer.removeModel(0);
-          viewer.removeModel(1);
-        } catch (e2) {
-          // Last resort: clear the div
-          if (viewerRef.current) {
-            const viewerDiv = viewerRef.current;
-            viewerDiv.innerHTML = '';
-            // Recreate viewer if needed
-            if (window.$3Dmol) {
-              const config = { backgroundColor: '#1a1a1a' };
-              const newViewer = window.$3Dmol.createViewer(viewerDiv, config);
-              viewerInstanceRef.current = newViewer;
-              viewer = newViewer;
-            }
-          }
-        }
+        console.warn('Error removing models:', e);
       }
       
-      // Add updated models - CRITICAL: This must work
+      // Add updated models with new coordinates
       try {
-        const model1 = viewer.addModel(newTargetPdb, 'pdb');
-        const model2 = viewer.addModel(newPartnerPdb, 'pdb');
-        
-        if (!model1 || !model2) {
-          console.error('Failed to add models to viewer');
-          return;
-        }
+        viewer.addModel(newTargetPdb, 'pdb');
+        viewer.addModel(newPartnerPdb, 'pdb');
       } catch (e) {
-        console.error('Error adding models to viewer:', e);
+        console.error('Error adding models:', e);
         return;
       }
       
@@ -428,18 +358,16 @@ const InteractionViewer = ({
       viewer.setStyle({ model: 0 }, { cartoon: { color: '#4A90E2' } });
       viewer.setStyle({ model: 1 }, { cartoon: { color: '#9333EA' } });
       
-      // Recalculate interactions periodically (not every frame)
+      // Recalculate interactions periodically
       interactionUpdateCounterRef.current++;
-      if (interactionUpdateCounterRef.current % 5 === 0) { // Every 5th update
-        if (currentShowInteractions) {
-          try {
-            const stats = calculateInteractions(viewer, 0, 1, true);
-            if (stats) {
-              setInterfaceContacts(stats.contacts);
-            }
-          } catch (e) {
-            console.warn('Error recalculating interactions:', e);
+      if (interactionUpdateCounterRef.current % 5 === 0 && currentShowInteractions && showInteractionsInView) {
+        try {
+          const stats = calculateInteractions(viewer, 0, 1, true);
+          if (stats) {
+            setInterfaceContacts(stats.contacts);
           }
+        } catch (e) {
+          // Ignore interaction calculation errors
         }
       }
       
@@ -452,23 +380,24 @@ const InteractionViewer = ({
         }
       }
       
-      // CRITICAL: Actually render the viewer
+      // CRITICAL: Render the viewer
       viewer.render();
       
-      // Debug log occasionally
-      if (interactionUpdateCounterRef.current % 30 === 0) {
-        console.log('Viewer updated successfully', {
-          targetAtoms: targetAtoms.length,
-          partnerAtoms: partnerAtoms.length,
-          sampleTargetPos: { x: targetAtoms[0]?.x?.toFixed(2), y: targetAtoms[0]?.y?.toFixed(2), z: targetAtoms[0]?.z?.toFixed(2) },
-          samplePartnerPos: { x: partnerAtoms[0]?.x?.toFixed(2), y: partnerAtoms[0]?.y?.toFixed(2), z: partnerAtoms[0]?.z?.toFixed(2) }
+      // Debug log occasionally to verify updates are happening
+      if (interactionUpdateCounterRef.current % 60 === 0) {
+        console.log('✅ Viewer updated with new coordinates', {
+          targetPdbLength: newTargetPdb.length,
+          partnerPdbLength: newPartnerPdb.length,
+          step: interactionUpdateCounterRef.current
         });
       }
+      
     } catch (error) {
-      console.error('Error updating viewer positions:', error);
+      console.error('❌ Error updating viewer with new PDB:', error);
       console.error('Stack:', error.stack);
     }
   };
+  
   
   // Control simulation
   const startSimulation = () => {

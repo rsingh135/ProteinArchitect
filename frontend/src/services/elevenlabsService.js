@@ -45,7 +45,12 @@ class ElevenLabsService {
       this.updateStatus('connecting');
 
       // Get signed URL from backend for private agents
-      const signedUrlResponse = await fetch('http://localhost:3002/api/elevenlabs/signed-url');
+      // Use relative URL in production, localhost in development
+      const apiUrl = import.meta.env.DEV
+        ? 'http://localhost:3002/api/elevenlabs/signed-url'
+        : '/api/elevenlabs-signed-url';
+
+      const signedUrlResponse = await fetch(apiUrl);
       if (!signedUrlResponse.ok) {
         throw new Error('Failed to get signed URL from server');
       }
