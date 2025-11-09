@@ -147,9 +147,15 @@ class VeoVideoService:
         
         # Construct a detailed, scientifically-accurate prompt for molecular docking
         prompt = (
-            f"Generate a scientifically accurate molecular dynamics simulation video showing the protein-protein "
+            f"Generate a fast, scientifically accurate molecular dynamics simulation video showing the protein-protein "
             f"interaction between {protein_a_name} and {protein_b_name}. "
             f"\n\n"
+            f"CRITICAL VISUALIZATION REQUIREMENTS:\n"
+            f"- Show ONLY the protein molecules themselves - NO labels, NO tags, NO numbers, NO text, NO annotations\n"
+            f"- Clean visualization with just the 3D protein structures\n"
+            f"- No identifiers, codes, or alphanumeric tags attached to or near the molecules\n"
+            f"- Pure molecular structure visualization only\n"
+            f"\n"
             f"The video should demonstrate:\n"
             f"1. INITIAL STATE: Both proteins start separated in 3D space, showing their AlphaFold-predicted structures\n"
             f"2. APPROACH PHASE: The proteins gradually move closer together, maintaining their structural integrity\n"
@@ -158,13 +164,16 @@ class VeoVideoService:
             f"5. COMPLEX FORMATION: The final docked complex structure\n"
             f"\n"
             f"Key requirements:\n"
+            f"- Generate quickly and efficiently\n"
             f"- Maintain realistic molecular motion (smooth, physics-based movement)\n"
             f"- Show the proteins as 3D molecular structures (cartoon/ribbon representation)\n"
             f"- Demonstrate the binding interface clearly\n"
             f"- Use appropriate colors: red for {protein_a_name}, blue for {protein_b_name}\n"
             f"- Make the transition smooth and continuous (no jumps or teleportation)\n"
+            f"- ABSOLUTELY NO text, labels, numbers, or tags visible anywhere in the video\n"
             f"\n"
-            f"This is a molecular biology visualization for scientific research and education."
+            f"This is a molecular biology visualization for scientific research and education. "
+            f"Focus on speed and clean visualization without any annotations."
         )
         
         logger.info("Starting Veo 3.1 video generation with new SDK...")
@@ -172,32 +181,154 @@ class VeoVideoService:
         try:
             # Use generate_videos() method with correct model name
             # Note: Model name format is veo-3.1-fast-generate-preview
+            # Add generation config for faster, cleaner output
             operation = self.client.models.generate_videos(
                 model="veo-3.1-fast-generate-preview",
                 prompt=prompt,
+                # Note: Check SDK docs for available generation_config parameters
+                # Some SDKs support: temperature, max_output_tokens, etc.
             )
             
-            logger.info(f"Video generation operation started: {operation.name if hasattr(operation, 'name') else 'N/A'}")
+            # Safely get operation name/ID for logging
+            operation_id = None
+            if hasattr(operation, 'name'):
+                operation_id = operation.name
+            elif hasattr(operation, 'id'):
+                operation_id = operation.id
+            elif isinstance(operation, str):
+                operation_id = operation
+            else:
+                # Try to get string representation
+                operation_id = str(operation) if operation else None
+            
+            logger.info(f"Video generation operation started: {operation_id or 'N/A'}")
+            
+            # Store original operation object - don't replace it
+            original_operation = operation
             
             # Poll until done (Veo API is async)
             max_polls = 60  # Maximum 10 minutes (60 * 10 seconds)
             poll_count = 0
             
-            while not operation.done:
+            # Log operation object properties for debugging
+            logger.info(f"Operation object type: {type(operation)}")
+            logger.info(f"Operation has 'done': {hasattr(operation, 'done')}")
+            logger.info(f"Operation has 'status': {hasattr(operation, 'status')}")
+            logger.info(f"Operation has 'refresh': {hasattr(operation, 'refresh')}")
+            logger.info(f"Operation has 'wait': {hasattr(operation, 'wait')}")
+            if hasattr(operation, 'done'):
+                logger.info(f"Initial operation.done value: {operation.done}")
+            if hasattr(operation, 'status'):
+                logger.info(f"Initial operation.status: {operation.status}")
+            # Log all operation attributes for debugging
+            op_attrs = [attr for attr in dir(operation) if not attr.startswith('_')]
+            logger.debug(f"Operation attributes: {op_attrs[:20]}")  # First 20 attributes
+            
+            # Helper function to check if operation is done
+            def is_operation_done(op):
+                """Check if operation is done using multiple methods"""
+                # Check done property first
+                if hasattr(op, 'done'):
+                    if op.done:
+                        logger.info("✓ Operation is done (checked via operation.done)")
+                        return True
+                # Check status property
+                if hasattr(op, 'status'):
+                    status = op.status
+                    if status in ['DONE', 'COMPLETED', 'SUCCESS', 'FINISHED']:
+                        logger.info(f"✓ Operation is done (checked via operation.status = {status})")
+                        return True
+                # Check state property
+                if hasattr(op, 'state'):
+                    state = op.state
+                    if state in ['DONE', 'COMPLETED', 'SUCCESS', 'FINISHED']:
+                        logger.info(f"✓ Operation is done (checked via operation.state = {state})")
+                        return True
+                # Check if response exists (indicates completion)
+                if hasattr(op, 'response') and op.response:
+                    logger.info("✓ Operation is done (checked via operation.response exists)")
+                    return True
+                return False
+            
+            while not is_operation_done(operation):
                 poll_count += 1
                 if poll_count > max_polls:
                     raise TimeoutError(f"Video generation timed out after {max_polls * 10} seconds")
                 
                 logger.info(f"Polling operation status... (attempt {poll_count}/{max_polls})")
+                
+                # Log current state every 5 polls (or every poll if done is True)
+                if poll_count % 5 == 0 or (hasattr(operation, 'done') and operation.done):
+                    logger.info(f"  → operation.done = {getattr(operation, 'done', 'N/A')}")
+                    logger.info(f"  → operation.status = {getattr(operation, 'status', 'N/A')}")
+                    if hasattr(operation, 'response') and operation.response:
+                        logger.info(f"  → operation has response: {type(operation.response)}")
+                    if hasattr(operation, 'error') and operation.error:
+                        logger.warning(f"  → operation.error = {operation.error}")
+                
                 await asyncio.sleep(10)  # Wait 10 seconds between polls
                 
-                # Get updated operation status
-                if hasattr(operation, 'name'):
-                    operation = self.client.operations.get(operation.name)
-                else:
-                    # Fallback: try to get operation by some other method
-                    # This might need adjustment based on actual SDK API
-                    operation = self.client.operations.get(operation)
+                # Try to refresh the operation object
+                # CRITICAL: The operation MUST be refreshed for operation.done to update
+                # But operations.get() with a string causes errors, so we need alternatives
+                refresh_success = False
+                try:
+                    # Method 1: Try refresh() if available (preferred - no string issues)
+                    if hasattr(operation, 'refresh'):
+                        operation.refresh()
+                        refresh_success = True
+                        logger.debug(f"✓ Operation refreshed via refresh(). done={getattr(operation, 'done', 'N/A')}")
+                    # Method 2: Try to use operation object directly with operations.get()
+                    # The SDK is making HTTP GET requests (we see them in logs), so this should work
+                    elif hasattr(self.client, 'operations') and not isinstance(operation, str):
+                        try:
+                            # Try passing the operation object itself (not operation.name which is a string)
+                            updated_op = self.client.operations.get(operation)
+                            # Check if we got a valid operation object back
+                            if updated_op and not isinstance(updated_op, str) and hasattr(updated_op, 'done'):
+                                operation = updated_op
+                                refresh_success = True
+                                # Log detailed status
+                                logger.info(f"✓ Operation refreshed. done={operation.done}, has response={hasattr(operation, 'response')}")
+                                if hasattr(operation, 'status'):
+                                    logger.info(f"  → operation.status = {operation.status}")
+                                if hasattr(operation, 'error'):
+                                    logger.warning(f"  → operation.error = {operation.error}")
+                            elif isinstance(updated_op, str):
+                                logger.debug("⚠ operations.get() returned string - keeping original operation")
+                        except Exception as get_error:
+                            error_msg = str(get_error)
+                            if "'str' object has no attribute 'name'" in error_msg:
+                                logger.debug("⚠ operations.get() causes string error - skipping refresh")
+                            else:
+                                logger.debug(f"⚠ Could not refresh via operations.get(): {get_error}")
+                    # Method 3: Check status property - it might update automatically
+                    elif hasattr(operation, 'status'):
+                        current_status = operation.status
+                        if current_status in ['DONE', 'COMPLETED', 'SUCCESS', 'FINISHED']:
+                            # Manually mark as done based on status
+                            if not hasattr(operation, 'done'):
+                                operation.done = True
+                            else:
+                                operation.done = True
+                            logger.info("✓ Operation marked as done based on status")
+                            refresh_success = True
+                        else:
+                            logger.debug(f"Operation status: {current_status} (not done yet)")
+                    # Method 4: If no refresh method, operation.done might update automatically
+                    # (Some SDKs update the operation object in-place)
+                    else:
+                        logger.debug("No refresh method available - operation.done may update automatically")
+                except Exception as refresh_error:
+                    error_msg = str(refresh_error)
+                    # Silently handle the 'name' attribute error - it's expected with this SDK
+                    if "'str' object has no attribute 'name'" not in error_msg:
+                        logger.warning(f"Error during refresh attempt: {refresh_error}")
+                
+                # If refresh didn't work, log a warning every 10 polls
+                if not refresh_success and poll_count % 10 == 0:
+                    logger.warning(f"⚠ Operation not refreshing after {poll_count} attempts. operation.done may not update automatically.")
+                    logger.warning(f"   Operation type: {type(operation).__name__}, has refresh: {hasattr(operation, 'refresh')}")
             
             logger.info("Video generation completed!")
             

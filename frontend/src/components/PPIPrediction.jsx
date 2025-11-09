@@ -549,56 +549,112 @@ const PPIPrediction = () => {
   // Fetch AlphaFold structure image directly from API
   const fetchAlphaFoldImage = async (uniprotId) => {
     if (!uniprotId) {
-      console.warn('No UniProt ID provided for image fetch');
+      console.warn('⚠️ No UniProt ID provided to fetchAlphaFoldImage');
       return null;
     }
     
+    const normalizedId = String(uniprotId).trim().toUpperCase();
+    console.log(`🖼️ fetchAlphaFoldImage called for: ${normalizedId}`);
+    
     try {
-      // Try to get image from AlphaFold API
-      const imageUrl = `https://alphafold.ebi.ac.uk/files/AF-${uniprotId}-F1-model_v4.png`;
-      console.log(`Fetching AlphaFold image from: ${imageUrl}`);
-      const response = await fetch(imageUrl, { 
-        method: 'GET',
-        mode: 'cors',
-        cache: 'no-cache'
-      });
+      // Try multiple image URLs (different versions)
+      const imageUrls = [
+        `https://alphafold.ebi.ac.uk/files/AF-${normalizedId}-F1-model_v4.png`,
+        `https://alphafold.ebi.ac.uk/files/AF-${normalizedId}-F1-predicted_aligned_error_v4.png`,
+        `https://alphafold.ebi.ac.uk/files/AF-${normalizedId}-F1-model_v3.png`,
+      ];
       
-      if (response.ok) {
-        const blob = await response.blob();
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = reader.result.split(',')[1];
-            console.log(`✅ Successfully fetched AlphaFold image for ${uniprotId}`);
-            resolve(base64);
-          };
-          reader.onerror = () => {
-            console.error(`Error reading blob for ${uniprotId}`);
-            resolve(null);
-          };
-          reader.readAsDataURL(blob);
-        });
-      } else {
-        console.warn(`AlphaFold image not found for ${uniprotId}: ${response.status} ${response.statusText}`);
+      for (const imageUrl of imageUrls) {
+        try {
+          console.log(`🖼️ Trying AlphaFold image URL: ${imageUrl}`);
+          const response = await fetch(imageUrl, { 
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+          });
+          
+          if (response.ok) {
+            const blob = await response.blob();
+            if (blob.size > 0) {
+              return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const base64 = reader.result.split(',')[1];
+                  console.log(`✅ Successfully fetched AlphaFold image for ${normalizedId} (${base64.length} chars, from ${imageUrl})`);
+                  resolve(base64);
+                };
+                reader.onerror = () => {
+                  console.error(`❌ Error reading blob for ${normalizedId}`);
+                  resolve(null);
+                };
+                reader.readAsDataURL(blob);
+              });
+            } else {
+              console.warn(`⚠️ Empty blob for ${normalizedId} from ${imageUrl}`);
+            }
+          } else {
+            console.log(`⚠️ Image not found at ${imageUrl}: ${response.status} ${response.statusText}`);
+          }
+        } catch (urlError) {
+          console.warn(`⚠️ Error fetching ${imageUrl}:`, urlError.message);
+        }
       }
+      
+      console.warn(`❌ Could not fetch AlphaFold image for ${normalizedId} from any URL`);
     } catch (err) {
-      console.warn(`Could not fetch AlphaFold image for ${uniprotId}:`, err);
+      console.error(`❌ Exception in fetchAlphaFoldImage for ${normalizedId}:`, err);
     }
     return null;
   };
 
-  // Generate image from PDB data using canvas
+  // Generate image from PDB data using 3Dmol.js (similar to py3Dmol approach)
   const generateImageFromPDB = async (pdbData, proteinName, color = '#ef4444') => {
     if (!pdbData || pdbData.length < 100) {
-      console.warn(`Invalid PDB data for ${proteinName}`);
+      console.warn(`❌ Invalid PDB data for ${proteinName} (length: ${pdbData ? pdbData.length : 0})`);
       return null;
     }
 
-    return new Promise((resolve) => {
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max wait
+    // Validate PDB data has structure
+    const hasATOM = pdbData.includes('ATOM') || pdbData.includes('HETATM');
+    const hasCIF = pdbData.includes('data_') || pdbData.includes('loop_');
+    if (!hasATOM && !hasCIF) {
+      console.error(`❌ PDB data for ${proteinName} has no ATOM/HETATM or CIF structure records`);
+      console.error(`📄 First 500 chars:`, pdbData.substring(0, 500));
+      return null;
+    }
+
+    // Ensure 3Dmol is loaded first
+    if (!window.$3Dmol) {
+      console.log('📦 3Dmol.js not loaded, attempting to load...');
+      await new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://3Dmol.csb.pitt.edu/build/3Dmol-min.js';
+        script.onload = () => {
+          console.log('✅ 3Dmol.js loaded for image generation');
+          resolve();
+        };
+        script.onerror = () => {
+          console.error('❌ Failed to load 3Dmol.js');
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
       
-      // Create a temporary viewer element
+      // Wait for 3Dmol to initialize
+      let waitAttempts = 0;
+      while (!window.$3Dmol && waitAttempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waitAttempts++;
+      }
+      
+      if (!window.$3Dmol) {
+        console.error('❌ 3Dmol.js still not available after loading attempt');
+        return null;
+      }
+    }
+
+    return new Promise((resolve) => {
+      // Create a temporary viewer element (similar to py3Dmol.view)
       const tempDiv = document.createElement('div');
       tempDiv.style.width = '800px';
       tempDiv.style.height = '600px';
@@ -606,83 +662,207 @@ const PPIPrediction = () => {
       tempDiv.style.left = '-9999px';
       tempDiv.style.top = '-9999px';
       tempDiv.style.visibility = 'hidden';
+      tempDiv.style.backgroundColor = 'white'; // Changed to white like the example
       document.body.appendChild(tempDiv);
 
-      // Wait for 3Dmol to be ready
-      const tryRender = async () => {
-        attempts++;
-        if (!window.$3Dmol) {
-          if (attempts < maxAttempts) {
-            setTimeout(tryRender, 100);
-          } else {
-            console.error('3Dmol.js not loaded after 5 seconds');
+      try {
+        console.log(`🎨 [${proteinName}] Generating image from PDB (${pdbData.length} chars)...`);
+        console.log(`📄 [${proteinName}] PDB preview (first 300 chars):`, pdbData.substring(0, 300));
+        
+        // Create viewer (similar to py3Dmol.view(width=800, height=600))
+        const viewer = window.$3Dmol.createViewer(tempDiv, {
+          backgroundColor: 'white', // Changed to white like the example
+        });
+        
+        // Determine format - try both PDB and CIF
+        const isCIF = pdbData.includes('data_') || pdbData.includes('loop_');
+        const format = isCIF ? 'cif' : 'pdb';
+        console.log(`📄 [${proteinName}] Detected format: ${format}`);
+        
+        let modelAdded = false;
+        try {
+          // Add model (similar to view.addModel(pdb_data, 'pdb'))
+          viewer.addModel(pdbData, format);
+          modelAdded = true;
+          console.log(`✅ [${proteinName}] Successfully added model using ${format} format`);
+        } catch (addModelError) {
+          console.error(`❌ [${proteinName}] Failed to add model (${format}):`, addModelError.message || addModelError);
+          // Try the other format
+          const altFormat = format === 'pdb' ? 'cif' : 'pdb';
+          try {
+            console.log(`🔄 [${proteinName}] Trying alternative format: ${altFormat}`);
+            viewer.addModel(pdbData, altFormat);
+            modelAdded = true;
+            console.log(`✅ [${proteinName}] Successfully added model using ${altFormat} format`);
+          } catch (altError) {
+            console.error(`❌ [${proteinName}] Failed to add model with ${altFormat} format:`, altError.message || altError);
             document.body.removeChild(tempDiv);
             resolve(null);
+            return;
           }
+        }
+        
+        if (!modelAdded) {
+          console.error(`❌ [${proteinName}] Could not add model`);
+          document.body.removeChild(tempDiv);
+          resolve(null);
           return;
         }
+        
+        // Style (similar to view.setStyle({'cartoon': {'color': 'spectrum'}}))
+        viewer.setStyle({}, { cartoon: { color: color } });
+        viewer.setBackgroundColor('white');
+        viewer.zoomTo();
+        viewer.render();
+        console.log(`✅ [${proteinName}] Rendered model, waiting for image capture...`);
 
-        try {
-          console.log(`Generating image from PDB for ${proteinName}...`);
-          const viewer = window.$3Dmol.createViewer(tempDiv, {
-            backgroundColor: '#1a1a1a',
-          });
-          
-          viewer.addModel(pdbData, 'pdb');
-          viewer.setStyle({}, { cartoon: { color: color } });
-          viewer.zoomTo();
-          viewer.render();
-
-          // Wait longer for render to complete
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Capture image - try multiple times
-          let imageData = null;
-          for (let i = 0; i < 5; i++) {
-            try {
-              imageData = viewer.getImage();
-              if (imageData) break;
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } catch (e) {
-              console.warn(`Image capture attempt ${i + 1} failed:`, e);
+        // Wait for render to complete (similar to py3Dmol's render time)
+        const renderWait = pdbData.length > 50000 ? 3000 : 2000;
+        console.log(`⏳ [${proteinName}] Waiting ${renderWait}ms for render to complete...`);
+        
+        setTimeout(async () => {
+          try {
+            // Try multiple capture methods (similar to saving in py3Dmol)
+            let imageData = null;
+            let captureMethod = 'unknown';
+            
+            // Method 1: Try canvas.toDataURL (most reliable)
+            const canvas = tempDiv.querySelector('canvas');
+            if (canvas) {
+              try {
+                console.log(`📸 [${proteinName}] Attempting canvas capture...`);
+                imageData = canvas.toDataURL('image/png');
+                if (imageData && imageData.length > 100) {
+                  captureMethod = 'canvas';
+                  console.log(`✅ [${proteinName}] Captured image using canvas (${imageData.length} chars)`);
+                } else {
+                  console.warn(`⚠️ [${proteinName}] Canvas data too short: ${imageData ? imageData.length : 0} chars`);
+                }
+              } catch (canvasError) {
+                console.warn(`⚠️ [${proteinName}] Canvas capture failed:`, canvasError.message);
+              }
+            } else {
+              console.warn(`⚠️ [${proteinName}] No canvas element found in viewer`);
             }
-          }
+            
+            // Method 2: Try viewer.getImage() as fallback
+            if (!imageData || imageData.length < 100) {
+              for (let i = 0; i < 10; i++) {
+                try {
+                  if (viewer.getImage) {
+                    imageData = viewer.getImage('png');
+                    if (!imageData || imageData.length < 100) {
+                      imageData = viewer.getImage('jpeg');
+                    }
+                    if (!imageData || imageData.length < 100) {
+                      imageData = viewer.getImage(); // default
+                    }
+                    
+                    if (imageData && imageData.length > 100) {
+                      captureMethod = 'getImage';
+                      console.log(`✅ [${proteinName}] Captured image using getImage on attempt ${i + 1} (${imageData.length} chars)`);
+                      break;
+                    }
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                } catch (e) {
+                  console.warn(`⚠️ [${proteinName}] getImage attempt ${i + 1} failed:`, e.message || e);
+                }
+              }
+            }
 
-          if (imageData) {
-            const base64 = imageData.split(',')[1];
-            console.log(`✅ Successfully generated image for ${proteinName}`);
-            document.body.removeChild(tempDiv);
-            resolve(base64);
-          } else {
-            console.error(`Failed to capture image for ${proteinName}`);
-            document.body.removeChild(tempDiv);
+            if (imageData && imageData.length > 100) {
+              // Extract base64 if it's a data URL
+              const base64 = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+              console.log(`✅ [${proteinName}] Successfully generated image using ${captureMethod} (base64: ${base64.length} chars)`);
+              if (tempDiv.parentNode) {
+                document.body.removeChild(tempDiv);
+              }
+              resolve(base64);
+            } else {
+              console.error(`❌ [${proteinName}] Failed to capture valid image`);
+              console.error(`   - Method tried: ${captureMethod}`);
+              console.error(`   - Image data length: ${imageData ? imageData.length : 0}`);
+              console.error(`   - Viewer exists: ${!!viewer}`);
+              console.error(`   - Canvas exists: ${!!canvas}`);
+              console.error(`   - Canvas width: ${canvas ? canvas.width : 'N/A'}`);
+              console.error(`   - Canvas height: ${canvas ? canvas.height : 'N/A'}`);
+              console.error(`   - Viewer getImage function: ${typeof (viewer.getImage)}`);
+              
+              if (tempDiv.parentNode) {
+                document.body.removeChild(tempDiv);
+              }
+              resolve(null);
+            }
+          } catch (captureError) {
+            console.error(`❌ [${proteinName}] Exception capturing image:`, captureError);
+            console.error(`   - Error message: ${captureError.message}`);
+            console.error(`   - Error stack: ${captureError.stack}`);
+            if (tempDiv.parentNode) {
+              document.body.removeChild(tempDiv);
+            }
             resolve(null);
           }
-        } catch (err) {
-          console.error(`Error generating image from PDB for ${proteinName}:`, err);
-          if (tempDiv.parentNode) {
-            document.body.removeChild(tempDiv);
-          }
-          resolve(null);
+        }, renderWait);
+      } catch (err) {
+        console.error(`❌ Error generating image from PDB for ${proteinName}:`, err);
+        console.error('Error details:', err.message, err.stack);
+        if (tempDiv.parentNode) {
+          document.body.removeChild(tempDiv);
         }
-      };
-
-      tryRender();
+        resolve(null);
+      }
     });
   };
 
-  // Generate complex image with chain colors
+  // Generate complex image with chain colors (similar to py3Dmol approach)
   const generateComplexImageFromPDB = async (pdbData, proteinName) => {
     if (!pdbData || pdbData.length < 100) {
-      console.warn(`Invalid PDB data for complex ${proteinName}`);
+      console.warn(`❌ Invalid PDB data for complex ${proteinName} (length: ${pdbData ? pdbData.length : 0})`);
       return null;
     }
 
-    return new Promise((resolve) => {
-      let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max wait
+    // Validate PDB data has structure
+    const hasATOM = pdbData.includes('ATOM') || pdbData.includes('HETATM');
+    const hasCIF = pdbData.includes('data_') || pdbData.includes('loop_');
+    if (!hasATOM && !hasCIF) {
+      console.error(`❌ Complex PDB data for ${proteinName} has no ATOM/HETATM or CIF structure records`);
+      console.error(`📄 First 500 chars:`, pdbData.substring(0, 500));
+      return null;
+    }
+
+    // Ensure 3Dmol is loaded first
+    if (!window.$3Dmol) {
+      console.log('📦 3Dmol.js not loaded, attempting to load...');
+      await new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://3Dmol.csb.pitt.edu/build/3Dmol-min.js';
+        script.onload = () => {
+          console.log('✅ 3Dmol.js loaded for complex image generation');
+          resolve();
+        };
+        script.onerror = () => {
+          console.error('❌ Failed to load 3Dmol.js');
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
       
-      // Create a temporary viewer element
+      // Wait for 3Dmol to initialize
+      let waitAttempts = 0;
+      while (!window.$3Dmol && waitAttempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waitAttempts++;
+      }
+      
+      if (!window.$3Dmol) {
+        console.error('❌ 3Dmol.js still not available after loading attempt');
+        return null;
+      }
+    }
+
+    return new Promise((resolve) => {
+      // Create a temporary viewer element (similar to py3Dmol.view)
       const tempDiv = document.createElement('div');
       tempDiv.style.width = '800px';
       tempDiv.style.height = '600px';
@@ -690,114 +870,226 @@ const PPIPrediction = () => {
       tempDiv.style.left = '-9999px';
       tempDiv.style.top = '-9999px';
       tempDiv.style.visibility = 'hidden';
+      tempDiv.style.backgroundColor = 'white'; // White background like example
       document.body.appendChild(tempDiv);
 
-      // Wait for 3Dmol to be ready
-      const tryRender = async () => {
-        attempts++;
-        if (!window.$3Dmol) {
-          if (attempts < maxAttempts) {
-            setTimeout(tryRender, 100);
-          } else {
-            console.error('3Dmol.js not loaded after 5 seconds');
+      try {
+        console.log(`🎨 [${proteinName}] Generating complex image from PDB (${pdbData.length} chars)...`);
+        console.log(`📄 [${proteinName}] PDB preview (first 300 chars):`, pdbData.substring(0, 300));
+        
+        // Create viewer (similar to py3Dmol.view(width=800, height=600))
+        const viewer = window.$3Dmol.createViewer(tempDiv, {
+          backgroundColor: 'white',
+        });
+        
+        // Determine format - try both PDB and CIF
+        const isCIF = pdbData.includes('data_') || pdbData.includes('loop_');
+        const format = isCIF ? 'cif' : 'pdb';
+        console.log(`📄 [${proteinName}] Detected format: ${format}`);
+        
+        let modelAdded = false;
+        try {
+          // Add model (similar to view.addModel(pdb_data, 'pdb'))
+          viewer.addModel(pdbData, format);
+          modelAdded = true;
+          console.log(`✅ [${proteinName}] Successfully added complex model using ${format} format`);
+        } catch (addModelError) {
+          console.error(`❌ [${proteinName}] Failed to add complex model (${format}):`, addModelError.message || addModelError);
+          // Try the other format
+          const altFormat = format === 'pdb' ? 'cif' : 'pdb';
+          try {
+            console.log(`🔄 [${proteinName}] Trying alternative format: ${altFormat}`);
+            viewer.addModel(pdbData, altFormat);
+            modelAdded = true;
+            console.log(`✅ [${proteinName}] Successfully added complex model using ${altFormat} format`);
+          } catch (altError) {
+            console.error(`❌ [${proteinName}] Failed to add complex model with ${altFormat} format:`, altError.message || altError);
             document.body.removeChild(tempDiv);
             resolve(null);
+            return;
           }
+        }
+        
+        if (!modelAdded) {
+          console.error(`❌ [${proteinName}] Could not add complex model`);
+          document.body.removeChild(tempDiv);
+          resolve(null);
           return;
         }
+        
+        // Color by chain for complex (similar to view.setStyle)
+        viewer.setStyle({ chain: 'A' }, { cartoon: { color: '#ef4444' } });
+        viewer.setStyle({ chain: 'B' }, { cartoon: { color: '#3b82f6' } });
+        // Also set default style for any other chains
+        viewer.setStyle({}, { cartoon: { color: 'spectrum' } });
+        viewer.setBackgroundColor('white');
+        viewer.zoomTo();
+        viewer.render();
+        console.log(`✅ [${proteinName}] Rendered complex model, waiting for image capture...`);
 
-        try {
-          console.log(`Generating complex image from PDB for ${proteinName}...`);
-          const viewer = window.$3Dmol.createViewer(tempDiv, {
-            backgroundColor: '#1a1a1a',
-          });
-          
-          viewer.addModel(pdbData, 'pdb');
-          // Style: Chain A in red, Chain B in blue
-          viewer.setStyle({ chain: 'A' }, { cartoon: { color: '#ef4444' } });
-          viewer.setStyle({ chain: 'B' }, { cartoon: { color: '#3b82f6' } });
-          // Fallback for other chains or if chain IDs don't match
-          viewer.setStyle({ model: 0 }, { cartoon: { color: '#ef4444' } });
-          viewer.setStyle({ model: 1 }, { cartoon: { color: '#3b82f6' } });
-          viewer.zoomTo();
-          viewer.render();
-
-          // Wait longer for render to complete
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // Capture image - try multiple times
-          let imageData = null;
-          for (let i = 0; i < 5; i++) {
-            try {
-              imageData = viewer.getImage();
-              if (imageData) break;
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } catch (e) {
-              console.warn(`Complex image capture attempt ${i + 1} failed:`, e);
+        // Wait longer for complex render (complex structures need more time)
+        const renderWait = pdbData.length > 50000 ? 3500 : 3000;
+        console.log(`⏳ [${proteinName}] Waiting ${renderWait}ms for complex render to complete...`);
+        
+        setTimeout(async () => {
+          try {
+            // Try multiple capture methods (similar to saving in py3Dmol)
+            let imageData = null;
+            let captureMethod = 'unknown';
+            
+            // Method 1: Try canvas.toDataURL (most reliable)
+            const canvas = tempDiv.querySelector('canvas');
+            if (canvas) {
+              try {
+                console.log(`📸 [${proteinName}] Attempting canvas capture...`);
+                imageData = canvas.toDataURL('image/png');
+                if (imageData && imageData.length > 100) {
+                  captureMethod = 'canvas';
+                  console.log(`✅ [${proteinName}] Captured complex image using canvas (${imageData.length} chars)`);
+                } else {
+                  console.warn(`⚠️ [${proteinName}] Canvas data too short: ${imageData ? imageData.length : 0} chars`);
+                }
+              } catch (canvasError) {
+                console.warn(`⚠️ [${proteinName}] Canvas capture failed:`, canvasError.message);
+              }
+            } else {
+              console.warn(`⚠️ [${proteinName}] No canvas element found in viewer`);
             }
-          }
+            
+            // Method 2: Try viewer.getImage() as fallback
+            if (!imageData || imageData.length < 100) {
+              for (let i = 0; i < 15; i++) {
+                try {
+                  if (viewer.getImage) {
+                    imageData = viewer.getImage('png');
+                    if (!imageData || imageData.length < 100) {
+                      imageData = viewer.getImage('jpeg');
+                    }
+                    if (!imageData || imageData.length < 100) {
+                      imageData = viewer.getImage(); // default
+                    }
+                    
+                    if (imageData && imageData.length > 100) {
+                      captureMethod = 'getImage';
+                      console.log(`✅ [${proteinName}] Captured complex image using getImage on attempt ${i + 1} (${imageData.length} chars)`);
+                      break;
+                    }
+                  }
+                  await new Promise(resolve => setTimeout(resolve, 400));
+                } catch (e) {
+                  console.warn(`⚠️ [${proteinName}] getImage attempt ${i + 1} failed:`, e.message || e);
+                }
+              }
+            }
 
-          if (imageData) {
-            const base64 = imageData.split(',')[1];
-            console.log(`✅ Successfully generated complex image for ${proteinName}`);
-            document.body.removeChild(tempDiv);
-            resolve(base64);
-          } else {
-            console.error(`Failed to capture complex image for ${proteinName}`);
-            document.body.removeChild(tempDiv);
+            if (imageData && imageData.length > 100) {
+              // Extract base64 if it's a data URL
+              const base64 = imageData.includes(',') ? imageData.split(',')[1] : imageData;
+              console.log(`✅ [${proteinName}] Successfully generated complex image using ${captureMethod} (base64: ${base64.length} chars)`);
+              if (tempDiv.parentNode) {
+                document.body.removeChild(tempDiv);
+              }
+              resolve(base64);
+            } else {
+              console.error(`❌ [${proteinName}] Failed to capture valid complex image`);
+              console.error(`   - Method tried: ${captureMethod}`);
+              console.error(`   - Image data length: ${imageData ? imageData.length : 0}`);
+              console.error(`   - Viewer exists: ${!!viewer}`);
+              console.error(`   - Canvas exists: ${!!canvas}`);
+              console.error(`   - Canvas width: ${canvas ? canvas.width : 'N/A'}`);
+              console.error(`   - Canvas height: ${canvas ? canvas.height : 'N/A'}`);
+              console.error(`   - Viewer getImage function: ${typeof (viewer.getImage)}`);
+              
+              if (tempDiv.parentNode) {
+                document.body.removeChild(tempDiv);
+              }
+              resolve(null);
+            }
+          } catch (captureError) {
+            console.error(`❌ [${proteinName}] Exception capturing complex image:`, captureError);
+            console.error(`   - Error message: ${captureError.message}`);
+            console.error(`   - Error stack: ${captureError.stack}`);
+            if (tempDiv.parentNode) {
+              document.body.removeChild(tempDiv);
+            }
             resolve(null);
           }
-        } catch (err) {
-          console.error(`Error generating complex image from PDB for ${proteinName}:`, err);
-          if (tempDiv.parentNode) {
-            document.body.removeChild(tempDiv);
-          }
-          resolve(null);
+        }, renderWait);
+      } catch (err) {
+        console.error(`❌ [${proteinName}] Error generating complex image from PDB:`, err);
+        console.error('Error details:', err.message, err.stack);
+        if (tempDiv.parentNode) {
+          document.body.removeChild(tempDiv);
         }
-      };
-
-      tryRender();
+        resolve(null);
+      }
     });
   };
 
-  // Fetch PDB data from AlphaFold with multiple fallbacks
+  // Fetch PDB data from AlphaFold (similar to requests.get in the example)
+  // Note: AlphaFold uses UniProt IDs, not RCSB PDB IDs
   const fetchPDBFromAlphaFold = async (uniprotId) => {
     if (!uniprotId) {
-      console.warn('No UniProt ID provided for PDB fetch');
+      console.warn('⚠️ No UniProt ID provided for PDB fetch');
       return null;
     }
     
     // Normalize UniProt ID (remove spaces, convert to uppercase)
-    const normalizedId = uniprotId.trim().toUpperCase();
+    // AlphaFold format: AF-{UniProtID}-F1-model_v4.pdb
+    const normalizedId = String(uniprotId).trim().toUpperCase();
+    console.log(`📥 [${normalizedId}] fetchPDBFromAlphaFold called`);
+    console.log(`📥 [${normalizedId}] Note: Using AlphaFold format (AF-{ID}-F1-model_vX.pdb), not RCSB format`);
     
-    // Try multiple model versions (v4, v3, v2)
+    // Try multiple model versions (v4, v3, v2) - similar to trying different PDB IDs
     const versions = ['v4', 'v3', 'v2'];
     
     for (const version of versions) {
       try {
+        // AlphaFold URL format (different from RCSB: https://files.rcsb.org/download/{pdb_id}.pdb)
         const pdbUrl = `https://alphafold.ebi.ac.uk/files/AF-${normalizedId}-F1-model_${version}.pdb`;
-        console.log(`📥 Trying to fetch PDB from: ${pdbUrl}`);
+        console.log(`📥 [${normalizedId}] Trying AlphaFold PDB URL: ${pdbUrl}`);
         
         const response = await fetch(pdbUrl, {
           method: 'GET',
           mode: 'cors',
-          cache: 'no-cache'
+          cache: 'no-cache',
+          headers: {
+            'Accept': 'text/plain,application/x-pdb,*/*'
+          }
         });
+        
+        console.log(`📥 [${normalizedId}] Response status: ${response.status} ${response.statusText}`);
+        console.log(`📥 [${normalizedId}] Content-Type: ${response.headers.get('content-type')}`);
         
         if (response.ok) {
           const pdbData = await response.text();
-          // Check if we got valid PDB data (should have ATOM records)
-          if (pdbData && pdbData.length > 100 && pdbData.includes('ATOM')) {
-            console.log(`✅ Successfully fetched PDB for ${normalizedId} (${version}, ${pdbData.length} chars)`);
+          console.log(`📥 [${normalizedId}] Received ${pdbData.length} chars of data`);
+          console.log(`📄 [${normalizedId}] First 500 chars:`, pdbData.substring(0, 500));
+          
+          // Validate PDB data (similar to checking if pdb_data is valid)
+          const hasATOM = pdbData.includes('ATOM') || pdbData.includes('HETATM');
+          const hasCIF = pdbData.includes('data_') || pdbData.includes('loop_');
+          const hasHeader = pdbData.includes('HEADER') || pdbData.includes('TITLE');
+          
+          if (pdbData && pdbData.length > 100 && (hasATOM || hasCIF)) {
+            console.log(`✅ [${normalizedId}] Successfully fetched PDB (${version}, ${pdbData.length} chars)`);
+            console.log(`   - Format: ${hasCIF ? 'CIF' : 'PDB'}`);
+            console.log(`   - Has ATOM records: ${hasATOM}`);
+            console.log(`   - Has header: ${hasHeader}`);
             return pdbData;
           } else {
-            console.warn(`PDB data invalid for ${normalizedId} (${version}): too short or no ATOM records`);
+            console.warn(`⚠️ [${normalizedId}] Invalid PDB data (${version}):`);
+            console.warn(`   - Length: ${pdbData.length}`);
+            console.warn(`   - Has ATOM: ${hasATOM}`);
+            console.warn(`   - Has CIF: ${hasCIF}`);
+            console.warn(`   - Has header: ${hasHeader}`);
+            console.warn(`   - Preview:`, pdbData.substring(0, 200));
           }
         } else {
-          console.log(`PDB not found for ${normalizedId} (${version}): ${response.status} ${response.statusText}`);
+          console.log(`⚠️ [${normalizedId}] PDB not found (${version}): ${response.status} ${response.statusText}`);
         }
       } catch (err) {
-        console.warn(`Error fetching PDB for ${normalizedId} (${version}):`, err.message);
+        console.warn(`⚠️ [${normalizedId}] Error fetching PDB (${version}):`, err.message || err);
       }
     }
     
@@ -930,25 +1222,43 @@ const PPIPrediction = () => {
       console.log('  - selectedProteins.proteinB:', selectedProteins.proteinB);
       console.log('  - Final uniprotA:', uniprotA);
       console.log('  - Final uniprotB:', uniprotB);
+      
+      // Validate UniProt IDs
+      if (!uniprotA || !uniprotB) {
+        const errorMsg = `Missing UniProt IDs: A=${uniprotA || 'MISSING'}, B=${uniprotB || 'MISSING'}`;
+        console.error('❌', errorMsg);
+        setVideoError(errorMsg);
+        setDebugInfo(prev => ({ ...prev, step: 'ERROR', message: errorMsg }));
+        setIsGeneratingVideo(false);
+        return;
+      }
+      
       console.log('  - Prediction result keys:', Object.keys(predictionResult || {}));
       
-      // Update debug info
       setDebugInfo({
         step: 'Extracted IDs',
-        message: `UniProt IDs: A=${uniprotA || 'MISSING'}, B=${uniprotB || 'MISSING'}`,
-        uniprotA,
-        uniprotB,
-        hasPredictionResult: !!predictionResult,
-        predictionKeys: Object.keys(predictionResult || {})
+        message: `UniProt IDs: A=${uniprotA}, B=${uniprotB}`,
+        uniprotA: uniprotA,
+        uniprotB: uniprotB
       });
+      
+      console.log('✅ UniProt IDs validated:', { uniprotA, uniprotB });
 
       // Try to capture from viewers first
+      console.log('📸 Attempting viewer screenshots...');
       imageA = captureViewerScreenshot(viewerAInstanceRef.current);
       imageB = captureViewerScreenshot(viewerBInstanceRef.current);
       imageComplex = captureViewerScreenshot(viewerComplexInstanceRef.current) || 
                      captureViewerScreenshot(viewerInstanceRef.current);
 
-      console.log('Viewer screenshots:', { imageA: !!imageA, imageB: !!imageB, imageComplex: !!imageComplex });
+      console.log('📸 Viewer screenshots result:', { 
+        imageA: !!imageA, 
+        imageB: !!imageB, 
+        imageComplex: !!imageComplex,
+        viewerAExists: !!viewerAInstanceRef.current,
+        viewerBExists: !!viewerBInstanceRef.current,
+        viewerComplexExists: !!viewerComplexInstanceRef.current
+      });
 
       // If viewer screenshots failed, try to get from AlphaFold API or generate from PDB
       if (!imageA) {
@@ -986,22 +1296,36 @@ const PPIPrediction = () => {
             if (pdbData && pdbData.length > 100) {
               setDebugInfo(prev => ({ ...prev, proteinAStatus: `Generating image from PDB (${pdbData.length} chars)...` }));
               console.log(`🎨 [Protein A] Generating image from PDB (${pdbData.length} chars)...`);
+              console.log(`📄 [Protein A] PDB preview (first 200 chars):`, pdbData.substring(0, 200));
+              
               const proteinName = (predictionResult.protein_a && typeof predictionResult.protein_a === 'object' && predictionResult.protein_a.name) 
                 ? predictionResult.protein_a.name 
                 : (selectedProteins.proteinA?.name || 'Protein A');
-              imageA = await generateImageFromPDB(pdbData, proteinName, '#ef4444');
               
-              if (imageA) {
-                setDebugInfo(prev => ({ ...prev, proteinAStatus: '✅ SUCCESS', proteinAImage: true }));
-                console.log(`✅ [Protein A] Successfully generated image from PDB`);
-              } else {
-                setDebugInfo(prev => ({ ...prev, proteinAStatus: '❌ Failed to generate from PDB', proteinAError: 'Image generation failed' }));
-                console.error(`❌ [Protein A] Failed to generate image from PDB`);
+              try {
+                imageA = await generateImageFromPDB(pdbData, proteinName, '#ef4444');
+                
+                if (imageA && imageA.length > 100) {
+                  setDebugInfo(prev => ({ ...prev, proteinAStatus: '✅ SUCCESS', proteinAImage: true }));
+                  console.log(`✅ [Protein A] Successfully generated image from PDB (${imageA.length} chars base64)`);
+                } else {
+                  const errorMsg = `Image generation returned invalid data (got ${imageA ? imageA.length : 0} chars)`;
+                  setDebugInfo(prev => ({ ...prev, proteinAStatus: '❌ Failed to generate from PDB', proteinAError: errorMsg }));
+                  console.error(`❌ [Protein A] ${errorMsg}`);
+                  console.error(`❌ [Protein A] Image data:`, imageA ? imageA.substring(0, 100) : 'null');
+                }
+              } catch (genError) {
+                const errorMsg = `Image generation exception: ${genError.message || genError}`;
+                setDebugInfo(prev => ({ ...prev, proteinAStatus: '❌ Failed to generate from PDB', proteinAError: errorMsg }));
+                console.error(`❌ [Protein A] Exception during image generation:`, genError);
               }
             } else {
               const errorMsg = `Could not get valid PDB data (got ${pdbData ? pdbData.length : 0} chars)`;
               setDebugInfo(prev => ({ ...prev, proteinAStatus: '❌ FAILED', proteinAError: errorMsg }));
               console.error(`❌ [Protein A] ${errorMsg}`);
+              if (pdbData) {
+                console.error(`❌ [Protein A] PDB data preview:`, pdbData.substring(0, 200));
+              }
             }
           } else {
             setDebugInfo(prev => ({ ...prev, proteinAStatus: '✅ SUCCESS (AlphaFold)', proteinAImage: true }));
@@ -1022,13 +1346,16 @@ const PPIPrediction = () => {
           setDebugInfo(prev => ({ ...prev, proteinBStatus: `Fetching image for ${uniprotB}...` }));
           console.log(`🖼️ [Protein B] Starting image generation for ${uniprotB}`);
           
-          // Try AlphaFold image API first (fastest)
+          // Try AlphaFold image API first (fastest) - this should work without API keys
+          console.log(`🖼️ [Protein B] Attempting to fetch AlphaFold image for ${uniprotB}...`);
           setDebugInfo(prev => ({ ...prev, proteinBStatus: `Trying AlphaFold image API...` }));
-          console.log(`🖼️ [Protein B] Attempting to fetch AlphaFold image...`);
           imageB = await fetchAlphaFoldImage(uniprotB);
           
+          console.log(`🖼️ [Protein B] AlphaFold image result: ${imageB ? `SUCCESS (${imageB.length} chars)` : 'FAILED'}`);
+          
           // If that fails, fetch PDB and generate image
-          if (!imageB) {
+          if (!imageB || imageB.length < 100) {
+            console.log(`⚠️ [Protein B] AlphaFold image failed or invalid, trying PDB generation...`);
             setDebugInfo(prev => ({ ...prev, proteinBStatus: 'AlphaFold image failed, trying PDB...' }));
             console.log(`📥 [Protein B] Image fetch failed, trying PDB data...`);
             let pdbData = null;
@@ -1048,22 +1375,36 @@ const PPIPrediction = () => {
             if (pdbData && pdbData.length > 100) {
               setDebugInfo(prev => ({ ...prev, proteinBStatus: `Generating image from PDB (${pdbData.length} chars)...` }));
               console.log(`🎨 [Protein B] Generating image from PDB (${pdbData.length} chars)...`);
+              console.log(`📄 [Protein B] PDB preview (first 200 chars):`, pdbData.substring(0, 200));
+              
               const proteinName = (predictionResult.protein_b && typeof predictionResult.protein_b === 'object' && predictionResult.protein_b.name) 
                 ? predictionResult.protein_b.name 
                 : (selectedProteins.proteinB?.name || 'Protein B');
-              imageB = await generateImageFromPDB(pdbData, proteinName, '#3b82f6');
               
-              if (imageB) {
-                setDebugInfo(prev => ({ ...prev, proteinBStatus: '✅ SUCCESS', proteinBImage: true }));
-                console.log(`✅ [Protein B] Successfully generated image from PDB`);
-              } else {
-                setDebugInfo(prev => ({ ...prev, proteinBStatus: '❌ Failed to generate from PDB', proteinBError: 'Image generation failed' }));
-                console.error(`❌ [Protein B] Failed to generate image from PDB`);
+              try {
+                imageB = await generateImageFromPDB(pdbData, proteinName, '#3b82f6');
+                
+                if (imageB && imageB.length > 100) {
+                  setDebugInfo(prev => ({ ...prev, proteinBStatus: '✅ SUCCESS', proteinBImage: true }));
+                  console.log(`✅ [Protein B] Successfully generated image from PDB (${imageB.length} chars base64)`);
+                } else {
+                  const errorMsg = `Image generation returned invalid data (got ${imageB ? imageB.length : 0} chars)`;
+                  setDebugInfo(prev => ({ ...prev, proteinBStatus: '❌ Failed to generate from PDB', proteinBError: errorMsg }));
+                  console.error(`❌ [Protein B] ${errorMsg}`);
+                  console.error(`❌ [Protein B] Image data:`, imageB ? imageB.substring(0, 100) : 'null');
+                }
+              } catch (genError) {
+                const errorMsg = `Image generation exception: ${genError.message || genError}`;
+                setDebugInfo(prev => ({ ...prev, proteinBStatus: '❌ Failed to generate from PDB', proteinBError: errorMsg }));
+                console.error(`❌ [Protein B] Exception during image generation:`, genError);
               }
             } else {
               const errorMsg = `Could not get valid PDB data (got ${pdbData ? pdbData.length : 0} chars)`;
               setDebugInfo(prev => ({ ...prev, proteinBStatus: '❌ FAILED', proteinBError: errorMsg }));
               console.error(`❌ [Protein B] ${errorMsg}`);
+              if (pdbData) {
+                console.error(`❌ [Protein B] PDB data preview:`, pdbData.substring(0, 200));
+              }
             }
           } else {
             setDebugInfo(prev => ({ ...prev, proteinBStatus: '✅ SUCCESS (AlphaFold)', proteinBImage: true }));
@@ -1154,17 +1495,57 @@ const PPIPrediction = () => {
               return line;
             });
             
-            const complexPdb = processedA.join('\n') + '\n' + processedB.join('\n');
-            setDebugInfo(prev => ({ ...prev, complexStatus: 'Generating image from combined PDB...' }));
-            console.log(`🎨 [Complex] Generating image from combined PDB...`);
-            imageComplex = await generateComplexImageFromPDB(complexPdb, 'Protein Complex');
+            // Get ATOM/HETATM lines only
+            const atomLinesA = processedA.filter(line => line.startsWith('ATOM') || line.startsWith('HETATM'));
+            const atomLinesB = processedB.filter(line => line.startsWith('ATOM') || line.startsWith('HETATM'));
             
-            if (imageComplex) {
-              setDebugInfo(prev => ({ ...prev, complexStatus: '✅ SUCCESS', complexImage: true }));
-              console.log(`✅ [Complex] Successfully generated from combined PDBs`);
+            // Get header from first PDB
+            const headerLines = processedA.filter(line => 
+              line.startsWith('HEADER') || 
+              line.startsWith('TITLE') || 
+              line.startsWith('REMARK') ||
+              line.startsWith('COMPND')
+            );
+            
+            // Combine: Header, then A atoms, then B atoms, then END
+            const complexPdb = [
+              ...headerLines,
+              ...atomLinesA,
+              ...atomLinesB,
+              'END'
+            ].join('\n');
+            
+            console.log(`🔗 [Complex] Combined PDB created (${complexPdb.length} chars)`);
+            console.log(`   - Header lines: ${headerLines.length}`);
+            console.log(`   - Protein A atoms: ${atomLinesA.length}`);
+            console.log(`   - Protein B atoms: ${atomLinesB.length}`);
+            console.log(`📄 [Complex] Combined PDB preview (first 500 chars):`, complexPdb.substring(0, 500));
+            
+            // Validate combined PDB
+            const hasATOM = complexPdb.includes('ATOM') || complexPdb.includes('HETATM');
+            if (!hasATOM) {
+              console.error(`❌ [Complex] Combined PDB has no ATOM records!`);
+              setDebugInfo(prev => ({ ...prev, complexStatus: '❌ FAILED', complexError: 'Combined PDB has no ATOM records' }));
             } else {
-              setDebugInfo(prev => ({ ...prev, complexStatus: '❌ Failed to generate from combined PDBs', complexError: 'Image generation failed' }));
-              console.error(`❌ [Complex] Failed to generate image from combined PDBs`);
+              setDebugInfo(prev => ({ ...prev, complexStatus: 'Generating image from combined PDB...' }));
+              console.log(`🎨 [Complex] Generating image from combined PDB...`);
+              
+              try {
+                imageComplex = await generateComplexImageFromPDB(complexPdb, 'Protein Complex');
+                
+                if (imageComplex && imageComplex.length > 100) {
+                  setDebugInfo(prev => ({ ...prev, complexStatus: '✅ SUCCESS', complexImage: true }));
+                  console.log(`✅ [Complex] Successfully generated from combined PDBs (${imageComplex.length} chars)`);
+                } else {
+                  const errorMsg = `Image generation returned invalid data (got ${imageComplex ? imageComplex.length : 0} chars)`;
+                  setDebugInfo(prev => ({ ...prev, complexStatus: '❌ Failed to generate from combined PDBs', complexError: errorMsg }));
+                  console.error(`❌ [Complex] ${errorMsg}`);
+                }
+              } catch (genError) {
+                const errorMsg = `Image generation exception: ${genError.message || genError}`;
+                setDebugInfo(prev => ({ ...prev, complexStatus: '❌ Failed to generate from combined PDBs', complexError: errorMsg }));
+                console.error(`❌ [Complex] Exception during image generation:`, genError);
+              }
             }
           } else {
             const errorMsg = `Could not get both PDBs (A: ${pdbA ? pdbA.length : 0} chars, B: ${pdbB ? pdbB.length : 0} chars)`;
@@ -1214,24 +1595,45 @@ const PPIPrediction = () => {
       setDebugInfo(prev => ({ ...prev, finalStatus: 'SUCCESS', allImagesReady: true }));
 
       // Send to backend with images and fallback data
+      // Get protein names - handle both string (UniProt ID) and object formats
+      let proteinAName = 'Protein A';
+      let proteinBName = 'Protein B';
+      
+      if (predictionResult.protein_a) {
+        if (typeof predictionResult.protein_a === 'object' && predictionResult.protein_a.name) {
+          proteinAName = predictionResult.protein_a.name;
+        } else if (selectedProteins.proteinA?.name) {
+          proteinAName = selectedProteins.proteinA.name;
+        }
+      }
+      
+      if (predictionResult.protein_b) {
+        if (typeof predictionResult.protein_b === 'object' && predictionResult.protein_b.name) {
+          proteinBName = predictionResult.protein_b.name;
+        } else if (selectedProteins.proteinB?.name) {
+          proteinBName = selectedProteins.proteinB.name;
+        }
+      }
+      
       const requestBody = {
         protein_a_image: imageA,
         protein_b_image: imageB,
         complex_image: imageComplex,
-        protein_a_name: predictionResult.protein_a?.name || 'Protein A',
-        protein_b_name: predictionResult.protein_b?.name || 'Protein B',
+        protein_a_name: proteinAName,
+        protein_b_name: proteinBName,
       };
 
       // Add fallback data (PDB and UniProt IDs) in case images fail
       // (uniprotA and uniprotB already defined above)
 
-      if (predictionResult.protein_a?.structure_data) {
+      // Check if protein_a/protein_b are objects with structure_data
+      if (predictionResult.protein_a && typeof predictionResult.protein_a === 'object' && predictionResult.protein_a.structure_data) {
         requestBody.protein_a_pdb = predictionResult.protein_a.structure_data;
       }
       if (uniprotA) {
         requestBody.protein_a_uniprot_id = uniprotA;
       }
-      if (predictionResult.protein_b?.structure_data) {
+      if (predictionResult.protein_b && typeof predictionResult.protein_b === 'object' && predictionResult.protein_b.structure_data) {
         requestBody.protein_b_pdb = predictionResult.protein_b.structure_data;
       }
       if (uniprotB) {
@@ -1647,33 +2049,69 @@ const PPIPrediction = () => {
             {/* 3D Visualization */}
             <div className={`visualization-card ${isDark ? 'dark' : ''}`}>
               <h4 className={isDark ? 'text-white' : 'text-gray-900'}>3D Interaction Visualization</h4>
-              <div 
-                ref={viewerRef} 
-                className="dmol-viewer" 
-                style={{ width: '100%', height: '500px', minHeight: '500px' }} 
-              />
-              <p className={`visualization-note ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                {predictionResult.note || '3D complex structure showing predicted interaction'}
-              </p>
+              
+              {/* Show video if generated, otherwise show 3D viewer */}
+              {generatedVideo ? (
+                <div style={{ 
+                  width: '100%', 
+                  height: '500px', 
+                  backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  position: 'relative'
+                }}>
+                  <video
+                    controls
+                    autoPlay
+                    loop
+                    className="generated-video"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  >
+                    <source
+                      src={`data:${generatedVideo.mimeType};base64,${generatedVideo.data}`}
+                      type={generatedVideo.mimeType}
+                    />
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              ) : (
+                <>
+                  <div 
+                    ref={viewerRef} 
+                    className="dmol-viewer" 
+                    style={{ width: '100%', height: '500px', minHeight: '500px' }} 
+                  />
+                  <p className={`visualization-note ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {predictionResult?.note || '3D complex structure showing predicted interaction'}
+                  </p>
+                </>
+              )}
               
               {/* Video Generation Button */}
-              <button
-                onClick={generateInteractionVideo}
-                disabled={isGeneratingVideo || !predictionResult}
-                className="generate-video-button"
-              >
-                {isGeneratingVideo ? (
-                  <>
-                    <Loader className="animate-spin" size={18} />
-                    Generating Video...
-                  </>
-                ) : (
-                  <>
-                    <Video size={18} />
-                    3D Protein Interaction Visualization
-                  </>
-                )}
-              </button>
+              {!generatedVideo && (
+                <button
+                  onClick={generateInteractionVideo}
+                  disabled={isGeneratingVideo || !predictionResult}
+                  className="generate-video-button"
+                  style={{ marginTop: '1rem' }}
+                >
+                  {isGeneratingVideo ? (
+                    <>
+                      <Loader className="animate-spin" size={18} />
+                      Generating Video...
+                    </>
+                  ) : (
+                    <>
+                      <Video size={18} />
+                      3D Protein Interaction Visualization
+                    </>
+                  )}
+                </button>
+              )}
 
               {/* Debug Info Panel */}
               {debugInfo && (
@@ -1734,23 +2172,6 @@ const PPIPrediction = () => {
                 </div>
               )}
 
-              {/* Generated Video */}
-              {generatedVideo && (
-                <div className={`generated-video-container ${isDark ? 'dark' : ''}`}>
-                  <h5 className={isDark ? 'text-white' : 'text-gray-900'}>Generated Interaction Video</h5>
-                  <video
-                    controls
-                    className="generated-video"
-                    style={{ width: '100%', maxHeight: '400px' }}
-                  >
-                    <source
-                      src={`data:${generatedVideo.mimeType};base64,${generatedVideo.data}`}
-                      type={generatedVideo.mimeType}
-                    />
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
-              )}
             </div>
           </div>
 
