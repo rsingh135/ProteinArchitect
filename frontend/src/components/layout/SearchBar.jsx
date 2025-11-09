@@ -217,7 +217,7 @@ const SearchBar = () => {
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-12 p-1 rounded-full hover:bg-gray-100"
+              className="absolute right-14 p-1 rounded-full hover:bg-gray-100"
               disabled={isSearching}
             >
               <X className="w-4 h-4 text-gray-400" />
