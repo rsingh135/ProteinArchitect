@@ -166,6 +166,7 @@ coverage/
 .cache/
 
 # Package manager locks (optional - some teams commit these)
+# Note: package-lock.json should be committed for Vercel deployments
 # package-lock.json
 # yarn.lock
 # Pipfile.lock
