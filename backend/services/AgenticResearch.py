@@ -867,6 +867,12 @@ IMPORTANT:
         
         # Extract sections
         papers = self._extract_section(raw_output, "ACADEMIC PAPERS", "USE CASES")
+
+        # Log the papers section for debugging
+        if papers:
+            logger.info(f"Papers section extracted ({len(papers)} chars): {papers[:500]}...")
+        else:
+            logger.warning("No papers section found in AI output")
         use_cases = self._extract_section(raw_output, "USE CASES", "DRUG DEVELOPMENT")
         drug_dev = self._extract_section(raw_output, "DRUG DEVELOPMENT", "RESEARCH REFERENCES")
         research_refs = self._extract_section(raw_output, "RESEARCH REFERENCES", "NOVEL RESEARCH" if include_novel else "SUMMARY")
@@ -1079,24 +1085,31 @@ IMPORTANT:
                     papers.append(current_paper)
                     current_paper = {}
                 continue
-            
+
             # Look for citation numbers
             citation_match = re.search(r'\[(\d+)\]', line)
             if citation_match:
                 citation_num = citation_match.group(1)
-            
+
             # Look for paper titles (lines that look like titles)
-            if len(line) > 30 and not line.startswith(('-', '•', '*')) and not re.match(r'^(Authors?|Journal|Year|DOI|PMID|Link|Title):', line, re.I):
+            # Exclude metadata fields: Author, Journal, Year, DOI, PMID, Link, Title, Summary, Description, Hyperlink, Direct hyperlink
+            is_metadata_field = re.match(r'^[\*\-\•]?\s*(Authors?|Journal|Year|DOI|PMID|Link|Title|Summary|Description|Hyperlink|Direct\s+hyperlink):', line, re.I)
+
+            # Extract title: Skip only metadata fields, allow bullet-pointed titles
+            if len(line) > 30 and not is_metadata_field:
                 if current_paper.get('title'):
                     papers.append(current_paper)
-                
-                # Clean title from markdown
-                title = re.sub(r'^\[?\d+\]?\s*', '', line).strip()
+
+                # Clean title from markdown and bullet points
+                title = re.sub(r'^[\*\-\•]\s*', '', line).strip()  # Remove leading bullet
+                title = re.sub(r'^\[?\d+\]?\s*\.?\s*', '', title).strip()  # Remove citation numbers like [1] or 1.
                 title = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', title)  # Remove ***text***
                 title = re.sub(r'\*\*([^*]+)\*\*', r'\1', title)  # Remove **text**
                 title = re.sub(r'\*([^*]+)\*', r'\1', title)  # Remove *text*
                 title = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', title)  # Remove markdown links, keep text
-                
+
+                logger.debug(f"Extracted paper title: {title[:100]}")
+
                 current_paper = {
                     'title': title,
                     'citationNumber': citation_num,
@@ -1110,6 +1123,8 @@ IMPORTANT:
                     'summary': ''
                 }
                 citation_num = None
+            elif is_metadata_field:
+                logger.debug(f"Skipping metadata line: {line[:100]}")
             elif current_paper.get('title'):
                 # Extract metadata
                 authors_match = re.match(r'^(Authors?|Author):\s*(.+)$', line, re.I)
