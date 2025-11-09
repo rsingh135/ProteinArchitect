@@ -23,6 +23,7 @@ from services.manufacturing_agent import ManufacturingAgent
 from services.gemini_service import GeminiProteinSearchService
 from services.ppi_service import PPIService
 from services.chat_service import ProteinChatService
+from services.alphafold_ppi_service import AlphaFoldPPIService
 
 # Initialize agentic research service (optional - may fail if DEDALUS_API_KEY not set)
 try:
@@ -91,6 +92,14 @@ except Exception as e:
 use_local_ppi = os.getenv("USE_LOCAL_PPI", "true").lower() == "true"
 ppi_service = PPIService(use_local=use_local_ppi)
 
+# Initialize AlphaFold PPI service for sequence-based predictions
+try:
+    alphafold_ppi_service = AlphaFoldPPIService()
+    logger.info("AlphaFold PPI service initialized successfully")
+except Exception as e:
+    logger.warning(f"Could not initialize AlphaFold PPI service: {e}")
+    alphafold_ppi_service = None
+
 # Global counter for retraining trigger
 protein_generation_count = 0
 
@@ -111,6 +120,13 @@ class ProteinSearchRequest(BaseModel):
 class PPIPredictionRequest(BaseModel):
     protein_a: str  # UniProt ID
     protein_b: str  # UniProt ID
+
+
+class PPISequenceRequest(BaseModel):
+    sequence_a: str  # Amino acid sequence
+    sequence_b: str  # Amino acid sequence
+    protein_a_name: Optional[str] = None
+    protein_b_name: Optional[str] = None
 
 
 class ProteinResearchRequest(BaseModel):
@@ -264,6 +280,52 @@ async def predict_ppi(request: PPIPredictionRequest):
     
     except Exception as e:
         logger.error(f"Error in PPI prediction: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict_ppi_from_sequences")
+async def predict_ppi_from_sequences(request: PPISequenceRequest):
+    """
+    Predict protein-protein interaction from amino acid sequences using AlphaFold
+    
+    Args:
+        sequence_a: Amino acid sequence for protein A
+        sequence_b: Amino acid sequence for protein B
+        protein_a_name: Optional name for protein A
+        protein_b_name: Optional name for protein B
+    
+    Returns:
+        Prediction results with structures, interaction probability, and 3D complex
+    """
+    try:
+        if not alphafold_ppi_service:
+            raise HTTPException(
+                status_code=503, 
+                detail="AlphaFold PPI service not available"
+            )
+        
+        # Validate sequences
+        if not request.sequence_a or not request.sequence_b:
+            raise HTTPException(
+                status_code=400, 
+                detail="Both sequence_a and sequence_b are required"
+            )
+        
+        # Make prediction
+        prediction = await alphafold_ppi_service.predict_from_sequences(
+            request.sequence_a,
+            request.sequence_b,
+            request.protein_a_name,
+            request.protein_b_name
+        )
+        
+        return prediction
+    
+    except ValueError as e:
+        logger.error(f"Validation error in PPI sequence prediction: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error in PPI sequence prediction: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
