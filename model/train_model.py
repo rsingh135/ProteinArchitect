@@ -200,11 +200,85 @@ def compute_esm_embeddings(protein_ids: List[str],
     model = None
     alphabet = None
     
-    # Check if model is already cached
+    # PRIORITY 1: Try Hugging Face FIRST (most reliable, no 403 errors!)
+    logger.info("Priority 1: Attempting to load from Hugging Face transformers...")
+    logger.info("   This is the most reliable method - no 403 errors!")
+    try:
+        from transformers import EsmModel, EsmTokenizer
+        logger.info("Loading ESM2 from Hugging Face...")
+        hf_model = EsmModel.from_pretrained("facebook/esm2_t33_650M_UR50D")
+        tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
+        
+        logger.info("✅ Hugging Face model loaded successfully!")
+        logger.info("   Adapting embedding computation to use Hugging Face API...")
+        
+        # Create a wrapper to make Hugging Face model work like ESM model
+        class HuggingFaceESMWrapper:
+            def __init__(self, hf_model, tokenizer):
+                self.hf_model = hf_model
+                self.tokenizer = tokenizer
+                self.eval()
+            
+            def eval(self):
+                self.hf_model.eval()
+            
+            def to(self, device):
+                self.hf_model = self.hf_model.to(device)
+                return self
+            
+            def __call__(self, tokens, repr_layers=None):
+                # tokens is already input_ids from batch_converter
+                # Hugging Face model expects input_ids directly
+                with torch.no_grad():
+                    # tokens might be a tensor or dict - handle both
+                    if isinstance(tokens, dict):
+                        outputs = self.hf_model(**tokens)
+                    else:
+                        outputs = self.hf_model(tokens)
+                    hidden_states = outputs.last_hidden_state
+                    return {"representations": {33: hidden_states}}
+        
+        class HuggingFaceAlphabet:
+            def __init__(self, tokenizer):
+                self.tokenizer = tokenizer
+            
+            def get_batch_converter(self):
+                return HuggingFaceBatchConverter(self.tokenizer)
+        
+        class HuggingFaceBatchConverter:
+            def __init__(self, tokenizer):
+                self.tokenizer = tokenizer
+            
+            def __call__(self, batch_sequences):
+                sequences = [seq for _, seq in batch_sequences]
+                encoded = self.tokenizer(
+                    sequences,
+                    padding=True,
+                    truncation=True,
+                    max_length=1024,
+                    return_tensors="pt"
+                )
+                labels = [name for name, _ in batch_sequences]
+                strs = sequences
+                tokens = encoded["input_ids"]
+                return labels, strs, tokens
+        
+        model = HuggingFaceESMWrapper(hf_model, tokenizer)
+        alphabet = HuggingFaceAlphabet(tokenizer)
+        logger.info("✅ Successfully loaded and adapted Hugging Face model!")
+        
+    except ImportError:
+        logger.warning("⚠️  transformers not installed - will try other methods")
+        logger.warning("   Install with: pip install transformers for reliable loading")
+    except Exception as e:
+        logger.warning(f"⚠️  Hugging Face load failed: {e}")
+        logger.info("   Will try fallback methods...")
+    
+    # Check if model is already cached (fallback)
     cache_dir = os.path.expanduser("~/.cache/torch/hub/checkpoints")
     model_file = os.path.join(cache_dir, "esm2_t33_650M_UR50D.pt")
     
-    # Method 1: Try loading from cache first
+    # Method 2: Try loading from cache (only if Hugging Face failed)
     if os.path.exists(model_file):
         logger.info(f"✅ Found cached model at: {model_file}")
         size_gb = os.path.getsize(model_file) / (1024**3)
@@ -227,7 +301,7 @@ def compute_esm_embeddings(protein_ids: List[str],
             except Exception as e2:
                 logger.warning(f"Direct load also failed: {e2}")
     
-    # Method 2: Try downloading with wget (more reliable than urllib)
+    # Method 3: Try downloading with wget (only if Hugging Face and cache failed)
     if model is None or alphabet is None:
         logger.info("Attempting to download model using wget...")
         try:
@@ -264,88 +338,7 @@ def compute_esm_embeddings(protein_ids: List[str],
         except Exception as e:
             logger.warning(f"wget download failed: {e}")
     
-    # Method 3: Use Hugging Face transformers (YOU ALREADY HAVE THIS!)
-    if model is None or alphabet is None:
-        logger.info("Attempting to load from Hugging Face transformers...")
-        logger.info("✅ You already downloaded this model - using it now!")
-        try:
-            from transformers import EsmModel, EsmTokenizer
-            logger.info("Loading ESM2 from Hugging Face (already cached)...")
-            hf_model = EsmModel.from_pretrained("facebook/esm2_t33_650M_UR50D")
-            tokenizer = EsmTokenizer.from_pretrained("facebook/esm2_t33_650M_UR50D")
-            
-            # Use Hugging Face model directly - adapt the embedding computation
-            logger.info("✅ Hugging Face model loaded successfully!")
-            logger.info("   Adapting embedding computation to use Hugging Face API...")
-            
-            # Create a wrapper to make Hugging Face model work like ESM model
-            class HuggingFaceESMWrapper:
-                def __init__(self, hf_model, tokenizer):
-                    self.hf_model = hf_model
-                    self.tokenizer = tokenizer
-                    self.eval()
-                
-                def eval(self):
-                    self.hf_model.eval()
-                
-                def to(self, device):
-                    self.hf_model = self.hf_model.to(device)
-                    return self
-                
-                def __call__(self, tokens, repr_layers=None):
-                    # Hugging Face model expects input_ids, not tokens directly
-                    with torch.no_grad():
-                        outputs = self.hf_model(tokens)
-                        # Get the last hidden state (layer 33 equivalent)
-                        hidden_states = outputs.last_hidden_state
-                        return {"representations": {33: hidden_states}}
-            
-            class HuggingFaceAlphabet:
-                def __init__(self, tokenizer):
-                    self.tokenizer = tokenizer
-                
-                def get_batch_converter(self):
-                    return HuggingFaceBatchConverter(self.tokenizer)
-            
-            class HuggingFaceBatchConverter:
-                def __init__(self, tokenizer):
-                    self.tokenizer = tokenizer
-                
-                def __call__(self, batch_sequences):
-                    # batch_sequences is list of (name, sequence) tuples
-                    sequences = [seq for _, seq in batch_sequences]
-                    
-                    # Tokenize sequences
-                    encoded = self.tokenizer(
-                        sequences,
-                        padding=True,
-                        truncation=True,
-                        max_length=1024,
-                        return_tensors="pt"
-                    )
-                    
-                    # Return in format compatible with ESM: (labels, strs, tokens)
-                    labels = [name for name, _ in batch_sequences]
-                    strs = sequences
-                    tokens = encoded["input_ids"]
-                    
-                    return labels, strs, tokens
-            
-            # Create wrapper objects
-            model = HuggingFaceESMWrapper(hf_model, tokenizer)
-            alphabet = HuggingFaceAlphabet(tokenizer)
-            
-            logger.info("✅ Successfully adapted Hugging Face model for training!")
-            
-        except ImportError:
-            logger.error("❌ transformers not installed")
-            logger.error("   Install with: pip install transformers")
-            raise
-        except Exception as e:
-            logger.error(f"❌ Hugging Face load failed: {e}")
-            raise
-    
-    # Method 4: Final attempt with esm library
+    # Method 4: Final attempt with esm library (last resort)
     if model is None or alphabet is None:
         logger.info("Final attempt: Loading with esm library (may download)...")
         max_retries = 2

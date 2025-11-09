@@ -32,20 +32,32 @@ class PPIService:
         self.use_local = use_local
         self.local_url = local_url
         
+        # Check if we're in production (Render, Heroku, etc.)
+        self.is_production = os.getenv("ENVIRONMENT") == "production" or os.getenv("RENDER") is not None
+        
         if use_local:
-            logger.info(f"Using local PPI service at {local_url}")
+            if self.is_production:
+                # In production, don't try to connect to localhost - use mock predictions directly
+                logger.info("Using mock PPI predictions (production mode, local service not available)")
+                self.use_mock_only = True
+            else:
+                # In development, try to connect to local service
+                logger.info(f"Using local PPI service at {local_url}")
+                self.use_mock_only = False
             self.sagemaker_runtime = None
             self.endpoint_name = None
         else:
             self.endpoint_name = endpoint_name or os.getenv("SAGEMAKER_PPI_ENDPOINT", "protein-ppi-endpoint")
             self.region = region
+            self.use_mock_only = False
             
             try:
                 self.sagemaker_runtime = boto3.client('sagemaker-runtime', region_name=region)
                 logger.info(f"Initialized SageMaker client for endpoint: {self.endpoint_name}")
             except Exception as e:
-                logger.warning(f"Could not initialize SageMaker client: {e}. Using local service.")
+                logger.warning(f"Could not initialize SageMaker client: {e}. Using mock predictions.")
                 self.use_local = True
+                self.use_mock_only = True
                 self.sagemaker_runtime = None
     
     def predict(self, protein_a: str, protein_b: str) -> Dict:
@@ -60,22 +72,30 @@ class PPIService:
             Dictionary with prediction results
         """
         if self.use_local:
-            return self._predict_local(protein_a, protein_b)
+            if self.use_mock_only:
+                # In production, use mock predictions directly
+                return self._mock_prediction(protein_a, protein_b)
+            else:
+                # In development, try local service first
+                return self._predict_local(protein_a, protein_b)
         else:
             return self._predict_sagemaker(protein_a, protein_b)
     
     def _predict_local(self, protein_a: str, protein_b: str) -> Dict:
-        """Predict using local service"""
+        """Predict using local service (development only)"""
         try:
             response = requests.post(
                 f"{self.local_url}/invocations",
                 json={"protein_a": protein_a, "protein_b": protein_b},
-                timeout=30
+                timeout=5  # Shorter timeout for local service
             )
             response.raise_for_status()
             return response.json()
+        except requests.exceptions.ConnectionError:
+            logger.warning(f"Local PPI service at {self.local_url} not available. Using mock predictions.")
+            return self._mock_prediction(protein_a, protein_b)
         except Exception as e:
-            logger.error(f"Error in local prediction: {e}")
+            logger.warning(f"Error in local prediction: {e}. Using mock predictions.")
             # Return mock prediction
             return self._mock_prediction(protein_a, protein_b)
     
@@ -104,17 +124,26 @@ class PPIService:
     def _mock_prediction(self, protein_a: str, protein_b: str) -> Dict:
         """Return mock prediction for testing/fallback"""
         # Simple hash-based mock (deterministic)
-        hash_value = hash(f"{protein_a}_{protein_b}") % 100
+        # Use abs() to ensure positive hash for consistent results
+        hash_value = abs(hash(f"{protein_a}_{protein_b}")) % 100
         interacts = hash_value > 40  # 60% chance of interaction
+        
+        # Determine confidence based on hash value
+        if hash_value > 70 or hash_value < 30:
+            confidence = "high"
+        elif hash_value > 60 or hash_value < 40:
+            confidence = "medium"
+        else:
+            confidence = "low"
         
         return {
             "interacts": interacts,
             "interaction_probability": float(hash_value) / 100.0,
-            "confidence": "low" if abs(hash_value - 50) < 20 else "medium",
-            "interaction_type": "binding",
-            "type_confidence": 0.7,
+            "confidence": confidence,
+            "interaction_type": "binding" if interacts else "no_interaction",
+            "type_confidence": 0.7 if interacts else 0.6,
             "protein_a": protein_a,
             "protein_b": protein_b,
-            "note": "Mock prediction - model not available"
+            "note": "Mock prediction - actual model not configured. Set up SageMaker endpoint or local service for real predictions."
         }
 

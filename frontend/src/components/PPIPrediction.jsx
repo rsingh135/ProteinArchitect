@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Sparkles, AlertCircle, CheckCircle, XCircle, Clock, Dna, Video, Loader } from 'lucide-react';
 import './PPIPrediction.css';
+import { API_ENDPOINTS } from '../config/api';
 
 const PPIPrediction = () => {
   const [mode, setMode] = useState('search'); // 'search' or 'sequence'
@@ -80,7 +81,7 @@ const PPIPrediction = () => {
     setIsSearchFocused(false);
 
     try {
-      const response = await fetch('http://localhost:8000/search_proteins', {
+      const response = await fetch(API_ENDPOINTS.searchProteins, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ const PPIPrediction = () => {
         setElapsedTime((Date.now() - timeStart) / 1000);
       }, 100);
 
-      const response = await fetch('http://localhost:8000/predict_ppi_from_sequences', {
+      const response = await fetch(API_ENDPOINTS.predictPPIFromSequences, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ const PPIPrediction = () => {
       }, 100);
 
     try {
-      const response = await fetch('http://localhost:8000/predict_ppi', {
+      const response = await fetch(API_ENDPOINTS.predictPPI, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1164,7 +1165,7 @@ const PPIPrediction = () => {
         requestBody.complex_pdb = predictionResult.complex_structure;
       }
 
-      const response = await fetch('http://localhost:8000/generate_ppi_video', {
+      const response = await fetch(API_ENDPOINTS.generatePPIVideo, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
