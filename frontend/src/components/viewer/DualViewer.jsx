@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Link2, Eye, Maximize2, X } from 'lucide-react';
+import { Layers, Eye, Maximize2, X } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import InteractionViewer from './InteractionViewer';
 import InteractionStats from './InteractionStats';
@@ -15,12 +15,8 @@ const DualViewer = () => {
   const {
     targetProtein,
     binderProtein,
-    viewMode,
-    syncRotation,
     renderStyle,
     colorScheme,
-    setViewMode,
-    setSyncRotation,
     setBinderProtein,
     setInterfaceContacts,
     setInteractionStats: setInteractionStatsInStore,
@@ -40,14 +36,6 @@ const DualViewer = () => {
   const [expandedViewer, setExpandedViewer] = useState(null);
   const [isPartnerSearchOpen, setIsPartnerSearchOpen] = useState(false);
 
-  const toggleViewMode = () => {
-    setViewMode(viewMode === 'split' ? 'overlay' : 'split');
-  };
-
-  const toggleSync = () => {
-    setSyncRotation(!syncRotation);
-  };
-
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main Content */}
@@ -62,40 +50,6 @@ const DualViewer = () => {
             <Layers className={`w-5 h-5 mr-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
             3D Structure Viewer
           </h2>
-
-          <div className="flex items-center space-x-3">
-            {/* Sync Toggle */}
-            <button
-              onClick={toggleSync}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-all text-sm font-medium ${
-                syncRotation
-                  ? 'bg-primary-600 text-white'
-                  : theme === 'dark'
-                  ? 'bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <Link2 className="w-4 h-4" />
-              <span>{syncRotation ? 'Synced' : 'Independent'}</span>
-            </button>
-
-            {/* View Mode Toggle */}
-            <button
-              onClick={toggleViewMode}
-              className={`px-4 py-2 rounded-lg border transition-all flex items-center space-x-2 text-sm font-medium ${
-                theme === 'dark'
-                  ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200'
-                  : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
-              }`}
-            >
-              {viewMode === 'split' ? (
-                <Eye className="w-4 h-4" />
-              ) : (
-                <Layers className="w-4 h-4" />
-              )}
-              <span>{viewMode === 'split' ? 'Split View' : 'Overlay'}</span>
-            </button>
-          </div>
         </div>
 
 

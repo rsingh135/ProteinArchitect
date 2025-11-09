@@ -28,12 +28,13 @@ const PAEPlot = () => {
   }, [interactionStats]);
 
   const getErrorColor = (error) => {
-    // Low error (good) = green/blue, High error (bad) = amber/red
-    if (error < 5) return '#10b981'; // green-600
-    if (error < 10) return '#0284c7'; // blue-600
-    if (error < 15) return '#f59e0b'; // amber-600
-    if (error < 20) return '#dc2626'; // red-600
-    return '#991b1b'; // red-800
+    // All shades of blue - easily distinguishable
+    // Lower error (better) = brighter blues, Higher error (worse) = darker blues
+    if (error < 5) return '#06b6d4'; // cyan-500 (bright cyan-blue) - very good
+    if (error < 10) return '#3b82f6'; // blue-500 (bright blue) - good
+    if (error < 15) return '#2563eb'; // blue-600 (medium blue) - moderate
+    if (error < 20) return '#1e40af'; // blue-800 (dark blue) - poor
+    return '#1e3a8a'; // blue-900 (very dark blue/navy) - very poor
   };
 
   if (!paeData || !paeData.matrix) {
@@ -148,11 +149,11 @@ const PAEPlot = () => {
           theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
         }`}>
           {[
-            { color: '#10b981', width: '25%' },
-            { color: '#0284c7', width: '25%' },
-            { color: '#f59e0b', width: '25%' },
-            { color: '#dc2626', width: '15%' },
-            { color: '#991b1b', width: '10%' },
+            { color: '#06b6d4', width: '25%' }, // cyan-500 (bright cyan-blue)
+            { color: '#3b82f6', width: '25%' }, // blue-500 (bright blue)
+            { color: '#2563eb', width: '25%' }, // blue-600 (medium blue)
+            { color: '#1e40af', width: '15%' }, // blue-800 (dark blue)
+            { color: '#1e3a8a', width: '10%' }, // blue-900 (very dark blue/navy)
           ].map((segment, index) => (
             <div
               key={index}

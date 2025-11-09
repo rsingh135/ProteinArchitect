@@ -26,14 +26,23 @@ const storage = {
 };
 
 export const useThemeStore = create((set, get) => {
-  // Initialize theme from localStorage or default to light
-  const savedTheme = storage.getItem('protein-architect-theme') || 'light';
+  // Initialize theme from localStorage or default to dark
+  // If no theme is saved, default to dark mode
+  let savedTheme = storage.getItem('protein-architect-theme');
   
-  // Apply theme on initialization
-  if (savedTheme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
+  // If no saved theme, set to dark and save it
+  if (!savedTheme) {
+    savedTheme = 'dark';
+    storage.setItem('protein-architect-theme', 'dark');
+  }
+  
+  // Ensure dark class is applied immediately
+  if (typeof document !== 'undefined') {
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }
 
   return {
@@ -42,10 +51,12 @@ export const useThemeStore = create((set, get) => {
       set({ theme });
       storage.setItem('protein-architect-theme', theme);
       // Apply theme to document root
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
+      if (typeof document !== 'undefined') {
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
       }
     },
     toggleTheme: () => {

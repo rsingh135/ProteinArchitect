@@ -76,11 +76,19 @@ const AnalysisDashboard = () => {
   // Show waiting state if only one protein is loaded
   if (!targetProtein || !binderProtein) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className={`flex h-full items-center justify-center transition-colors ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
-          <Users className="w-16 h-16 text-blue-400 mx-auto mb-4" />
-          <p className="text-gray-600 text-lg font-semibold">Waiting for Binding Partner</p>
-          <p className="text-gray-500 text-sm mt-2">
+          <Users className={`w-16 h-16 mx-auto mb-4 ${
+            theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+          }`} />
+          <p className={`text-lg font-semibold ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>Waiting for Binding Partner</p>
+          <p className={`text-sm mt-2 ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>
             {!targetProtein && !binderProtein 
               ? 'Please load both target and partner proteins to view interaction analysis'
               : !targetProtein 
@@ -107,10 +115,14 @@ const AnalysisDashboard = () => {
 
   if (isLoading && !data) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className={`flex h-full items-center justify-center transition-colors ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Analyzing protein-protein interactions...</p>
+          <div className={`animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4 ${
+            theme === 'dark' ? 'border-blue-400' : 'border-blue-600'
+          }`}></div>
+          <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>Analyzing protein-protein interactions...</p>
         </div>
       </div>
     );
@@ -118,11 +130,17 @@ const AnalysisDashboard = () => {
 
   if (error && !data) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className={`flex h-full items-center justify-center transition-colors ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <p className="text-red-600 text-lg">Error loading interaction analysis</p>
-          <p className="text-gray-500 text-sm mt-2">{error}</p>
+          <p className={`text-lg ${
+            theme === 'dark' ? 'text-red-400' : 'text-red-600'
+          }`}>Error loading interaction analysis</p>
+          <p className={`text-sm mt-2 ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>{error}</p>
         </div>
       </div>
     );
@@ -130,11 +148,19 @@ const AnalysisDashboard = () => {
 
   if (!data) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50">
+      <div className={`flex h-full items-center justify-center transition-colors ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         <div className="text-center">
-          <Activity className="w-16 h-16 text-blue-400 mx-auto mb-4 animate-pulse" />
-          <p className="text-gray-600 text-lg font-semibold">Calculating Interactions</p>
-          <p className="text-gray-500 text-sm mt-2">Please wait while interaction statistics are computed from the protein structures...</p>
+          <Activity className={`w-16 h-16 mx-auto mb-4 animate-pulse ${
+            theme === 'dark' ? 'text-blue-400' : 'text-blue-500'
+          }`} />
+          <p className={`text-lg font-semibold ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>Calculating Interactions</p>
+          <p className={`text-sm mt-2 ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>Please wait while interaction statistics are computed from the protein structures...</p>
         </div>
       </div>
     );

@@ -19,10 +19,11 @@ const ConfidencePanel = ({ protein = null, interactionStats = null }) => {
   }, [displayProtein, stats]);
 
   const getConfidenceColor = (score) => {
-    if (score >= 90) return '#10b981'; // Very high - green-600
-    if (score >= 70) return '#0284c7'; // High - blue-600
-    if (score >= 50) return '#f59e0b'; // Medium - amber-600
-    return '#dc2626'; // Low - red-600
+    // All shades of blue - easily distinguishable
+    if (score >= 90) return '#06b6d4'; // Very high - cyan-500 (bright cyan-blue)
+    if (score >= 70) return '#3b82f6'; // High - blue-500 (bright blue)
+    if (score >= 50) return '#2563eb'; // Medium - blue-600 (medium blue)
+    return '#1e40af'; // Low - blue-800 (dark blue)
   };
 
   const avgConfidence = useMemo(() => {
@@ -124,10 +125,10 @@ const ConfidencePanel = ({ protein = null, interactionStats = null }) => {
       {/* Legend */}
       <div className="grid grid-cols-4 gap-2 mt-4">
         {[
-          { label: 'Very High', color: '#10b981', range: '> 90' },
-          { label: 'High', color: '#0284c7', range: '70-90' },
-          { label: 'Medium', color: '#f59e0b', range: '50-70' },
-          { label: 'Low', color: '#dc2626', range: '< 50' },
+          { label: 'Very High', color: '#06b6d4', range: '> 90' },
+          { label: 'High', color: '#3b82f6', range: '70-90' },
+          { label: 'Medium', color: '#2563eb', range: '50-70' },
+          { label: 'Low', color: '#1e40af', range: '< 50' },
         ].map((item, index) => (
           <div key={index} className="flex items-center space-x-2">
             <div

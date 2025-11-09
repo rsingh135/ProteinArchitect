@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, Settings, HelpCircle, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import SearchBar from './SearchBar';
 import { useThemeStore } from '../../store/themeStore';
 
@@ -49,39 +49,6 @@ const Navbar = () => {
             ) : (
               <Moon className="w-5 h-5" />
             )}
-          </button>
-
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'hover:bg-gray-800 text-gray-300'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-            title="Upload Sequence"
-          >
-            <Upload className="w-5 h-5" />
-          </button>
-
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'hover:bg-gray-800 text-gray-300'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-            title="Help"
-          >
-            <HelpCircle className="w-5 h-5" />
-          </button>
-
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'hover:bg-gray-800 text-gray-300'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
           </button>
         </div>
       </div>

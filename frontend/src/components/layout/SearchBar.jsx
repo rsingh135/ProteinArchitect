@@ -222,7 +222,7 @@ const SearchBar = () => {
             : 'border-gray-300'
         } ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="absolute left-4 flex items-center pointer-events-none">
-            {(isSearching || isResearching) ? (
+            {isSearching ? (
               <Loader className="w-4 h-4 text-primary-500 animate-spin" />
             ) : (
               <Sparkles className={`w-4 h-4 ${isFocused ? 'text-primary-500' : 'text-gray-400'}`} />
@@ -274,7 +274,7 @@ const SearchBar = () => {
                 ? 'text-white placeholder-gray-400'
                 : 'text-gray-900 placeholder-gray-500'
             }`}
-            disabled={isSearching || isResearching}
+            disabled={isSearching}
           />
 
           {query && (
@@ -294,10 +294,10 @@ const SearchBar = () => {
 
           <button
             type="submit"
-            disabled={isSearching || isResearching || !query.trim()}
+            disabled={isSearching || !query.trim()}
             className="absolute right-2 px-4 py-1.5 rounded-md bg-primary-600 text-white text-base font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {(isSearching || isResearching) ? (
+            {isSearching ? (
               <Loader className="w-4 h-4 animate-spin" />
             ) : (
               <Search className="w-4 h-4" />
@@ -322,7 +322,7 @@ const SearchBar = () => {
       )}
       
       {/* Search suggestions */}
-      {isFocused && !query && !isSearching && !isResearching && (
+      {isFocused && !query && !isSearching && (
         <div 
           className={`absolute top-full mt-2 left-0 right-0 rounded-lg shadow-lg p-3 z-50 border ${
             theme === 'dark'

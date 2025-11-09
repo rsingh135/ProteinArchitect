@@ -184,10 +184,59 @@ export const UniProtService = {
         const interactant2 = interaction.interactantTwo;
         
         if (interactant1 && interactant2) {
+          // Extract UniProt IDs - prioritize uniProtKBAccession, fallback to other IDs
+          const getId = (interactant) => {
+            // First try uniProtKBAccession (most reliable)
+            if (interactant.uniProtKBAccession) {
+              return interactant.uniProtKBAccession;
+            }
+            // Try intActId (might be a UniProt ID format)
+            if (interactant.intActId) {
+              // Check if it looks like a UniProt ID
+              if (/^[A-Z][0-9][A-Z0-9]{3}[0-9]$/.test(interactant.intActId)) {
+                return interactant.intActId;
+              }
+            }
+            // Try database id from crossReferences
+            if (interactant.dbReferences && interactant.dbReferences.length > 0) {
+              const uniprotRef = interactant.dbReferences.find(ref => ref.database === 'UniProtKB');
+              if (uniprotRef && uniprotRef.id) {
+                return uniprotRef.id;
+              }
+            }
+            // Last resort: use any available ID
+            return interactant.uniProtKBAccession || interactant.intActId || interactant.dbXrefs?.[0] || '';
+          };
+          
+          const id1 = getId(interactant1);
+          const id2 = getId(interactant2);
+          
+          if (!id1 || !id2) {
+            return null; // Skip if we can't get valid IDs
+          }
+          
+          // Extract evidence information
+          const evidences = interaction.evidences || [];
+          const numberOfExperiments = interaction.numberOfExperiments || evidences.length || 0;
+          
+          // Extract methods from evidences
+          const methods = [];
+          evidences.forEach(evidence => {
+            if (evidence.interactionDetectionMethod) {
+              methods.push({
+                methodName: evidence.interactionDetectionMethod.value || '',
+                methodId: evidence.interactionDetectionMethod.id || '',
+              });
+            }
+          });
+          
           return {
-            interactor1: interactant1.uniProtKBAccession || interactant1.intActId || '',
-            interactor2: interactant2.uniProtKBAccession || interactant2.intActId || '',
+            interactor1: id1,
+            interactor2: id2,
             type: 'Physical interaction',
+            numberOfExperiments: numberOfExperiments,
+            evidences: evidences,
+            methods: methods,
           };
         }
         return null;

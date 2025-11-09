@@ -1,20 +1,70 @@
-import React from 'react';
-import { ExternalLink } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
+import InteractionService from '../../services/interactionService';
 
 const ProteinOverview = ({ showPPISuggestions = false }) => {
-  const { targetProtein, confidenceScores } = useProteinStore();
+  const { targetProtein, confidenceScores, setBinderProtein } = useProteinStore();
   const { theme } = useThemeStore();
+  const [ppiSuggestions, setPpiSuggestions] = useState([]);
+  const [isLoadingInteractions, setIsLoadingInteractions] = useState(false);
   
-  // Mock PPI suggestions (can be replaced with actual data later)
-  const ppiSuggestions = [
-    { id: 'P01308', name: 'Insulin Receptor', confidence: 0.98, source: 'STRING' },
-    { id: 'P62942', name: 'Fructose-1,6-bisphosphatase', confidence: 0.85, source: 'BioGRID' },
-    { id: 'P00533', name: 'EGFR', confidence: 0.78, source: 'IntAct' },
-    { id: 'P04626', name: 'ErbB2', confidence: 0.72, source: 'STRING' },
-  ];
+  // Fetch real interactions when target protein changes
+  useEffect(() => {
+    const fetchInteractions = async () => {
+      if (!targetProtein?.uniprotId || !showPPISuggestions) {
+        setPpiSuggestions([]);
+        return;
+      }
+
+      setIsLoadingInteractions(true);
+      try {
+        const interactions = await InteractionService.fetchInteractions(targetProtein.uniprotId);
+        setPpiSuggestions(interactions);
+      } catch (error) {
+        console.error('Error fetching interactions:', error);
+        setPpiSuggestions([]);
+      } finally {
+        setIsLoadingInteractions(false);
+      }
+    };
+
+    fetchInteractions();
+  }, [targetProtein?.uniprotId, showPPISuggestions]);
+  
+  // Handle adding a partner protein
+  const handleAddPartner = async (partnerId) => {
+    if (!partnerId) return;
+
+    setIsLoadingInteractions(true);
+    
+    try {
+      console.log('🔍 Adding partner protein:', partnerId);
+      
+      // Search for the partner protein
+      const partnerData = await ProteinService.searchProtein(partnerId);
+      console.log('✅ Partner protein data received:', partnerData);
+      
+      // Fetch the structure file
+      const pdbData = await ProteinService.fetchStructure(partnerData, 'pdb');
+      console.log('✅ Partner PDB structure loaded');
+      
+      // Update store with binder protein data
+      setBinderProtein({
+        ...partnerData,
+        pdbData,
+      });
+      
+      console.log('✅ Partner added successfully:', partnerData.name);
+    } catch (error) {
+      console.error('❌ Error adding partner:', error);
+      alert(`Failed to load partner protein: ${error.message}\n\nTry using a UniProt ID like 'P01308' (human insulin)`);
+    } finally {
+      setIsLoadingInteractions(false);
+    }
+  };
 
   // Use fetched protein data or show placeholder
   const proteinName = targetProtein?.name || 'No protein loaded';
@@ -157,7 +207,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
           </div>
         )}
 
-        {/* Sequence Preview */}
+        {/* Sequence - Full Sequence */}
         {targetProtein && sequence && (
           <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-xs font-display font-bold uppercase tracking-wider mb-3 ${
@@ -165,15 +215,15 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
             }`}>
               Sequence
             </h3>
-            <div className={`rounded-lg p-4 border transition-colors ${
+            <div className={`rounded-lg p-4 border transition-colors max-h-64 overflow-y-auto ${
               theme === 'dark'
                 ? 'bg-gray-700/50 border-gray-600'
                 : 'bg-gray-50 border-gray-200'
             }`}>
-              <p className={`font-mono text-xs leading-relaxed break-all ${
+              <p className={`font-mono text-xs leading-relaxed break-all whitespace-pre-wrap ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>
-                {sequence.substring(0, 200)}{sequence.length > 200 ? '...' : ''}
+                {sequence}
               </p>
               <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>{sequenceLength} amino acids</p>
             </div>
@@ -191,42 +241,60 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
             <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Suggested binding partners based on experimental data
             </p>
-            <div className="space-y-2">
-              {ppiSuggestions.map((ppi, index) => (
-                <button
-                  key={index}
-                  className={`w-full text-left p-3 rounded-lg border transition-all group ${
-                    theme === 'dark'
-                      ? 'border-gray-700 hover:border-blue-600 hover:bg-gray-700/50'
-                      : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium group-hover:text-primary-700 ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {ppi.name}
-                      </p>
-                      <p className={`text-xs font-mono mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{ppi.id}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Confidence: <span className={`font-semibold ${
-                            theme === 'dark' ? 'text-green-400' : 'text-green-600'
-                          }`}>{(ppi.confidence * 100).toFixed(0)}%</span>
-                        </span>
-                        <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Source: <span className="font-medium">{ppi.source}</span>
-                        </span>
+            {isLoadingInteractions ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader className={`w-5 h-5 animate-spin ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                <span className={`ml-2 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Loading interactions...</span>
+              </div>
+            ) : ppiSuggestions.length > 0 ? (
+              <div className="space-y-2">
+                {ppiSuggestions.map((ppi, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAddPartner(ppi.id)}
+                    className={`w-full text-left p-3 rounded-lg border transition-all group ${
+                      theme === 'dark'
+                        ? 'border-gray-700 hover:border-blue-600 hover:bg-gray-700/50'
+                        : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium group-hover:text-primary-700 ${
+                          theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {ppi.name}
+                        </p>
+                        <p className={`text-xs font-mono mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{ppi.id}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Confidence: <span className={`font-semibold ${
+                              theme === 'dark' ? 'text-green-400' : 'text-green-600'
+                            }`}>{(ppi.confidence * 100).toFixed(0)}%</span>
+                          </span>
+                          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Source: <span className="font-medium">{ppi.source}</span>
+                          </span>
+                        </div>
                       </div>
+                      <ExternalLink className={`w-4 h-4 flex-shrink-0 ml-2 group-hover:text-primary-600 ${
+                        theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      }`} />
                     </div>
-                    <ExternalLink className={`w-4 h-4 flex-shrink-0 ml-2 group-hover:text-primary-600 ${
-                      theme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                    }`} />
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className={`text-center py-8 rounded-lg border ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
+                <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                  No interaction data available
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -295,10 +363,22 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
             </h3>
             <div className="space-y-2">
               {[
-                { name: 'UniProt', url: `https://www.uniprot.org/uniprotkb/${uniprotId}` },
-                { name: 'AlphaFold DB', url: `https://alphafold.ebi.ac.uk/entry/${uniprotId}` },
-                { name: 'PDB', url: `https://www.rcsb.org/search?q=${uniprotId}` },
-                { name: 'KEGG', url: `https://www.genome.jp/entry/${uniprotId}` },
+                { 
+                  name: 'UniProt', 
+                  url: `https://www.uniprot.org/uniprotkb/${uniprotId}` 
+                },
+                { 
+                  name: 'AlphaFold DB', 
+                  url: `https://alphafold.ebi.ac.uk/entry/${uniprotId}` 
+                },
+                { 
+                  name: 'PDB', 
+                  url: `https://www.rcsb.org/search?q=${encodeURIComponent(uniprotId)}&requestFrom=quick-search` 
+                },
+                { 
+                  name: 'KEGG', 
+                  url: `https://www.genome.jp/dbget-bin/www_bget?uniprot:${uniprotId}` 
+                },
               ].map((resource, index) => (
                 <a
                   key={index}
