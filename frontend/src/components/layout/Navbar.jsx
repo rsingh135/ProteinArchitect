@@ -12,9 +12,9 @@ const Navbar = () => {
         ? 'bg-gray-900 border-gray-700'
         : 'bg-white border-gray-200'
     }`}>
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center px-6 py-4">
         {/* Logo */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 flex-shrink-0">
           <h1 className={`text-3xl font-display font-bold tracking-tight ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
@@ -27,13 +27,15 @@ const Navbar = () => {
           </span>
         </div>
 
-        {/* Search Bar */}
-        <div className="flex-1 max-w-2xl mx-8">
-          <SearchBar />
+        {/* Search Bar - Centered */}
+        <div className="flex-1 px-12">
+          <div className="w-full max-w-2xl">
+            <SearchBar />
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           <button
             onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors ${

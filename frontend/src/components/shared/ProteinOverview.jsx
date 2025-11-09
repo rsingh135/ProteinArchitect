@@ -173,10 +173,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
   const confidenceBadge = getConfidenceBadge();
 
   return (
-    <div className={`w-96 border-l overflow-y-auto transition-colors ${
+    <div className={`w-96 border-l overflow-y-auto transition-all duration-300 ${
       theme === 'dark'
-        ? 'border-gray-700 bg-gray-800'
-        : 'border-gray-200 bg-white'
+        ? 'border-gray-700/50 bg-gray-800/90 backdrop-blur-sm'
+        : 'border-gray-200/50 bg-white/90 backdrop-blur-sm'
     }`}>
       <div className="p-6 space-y-6">
         {/* Protein Overview */}
@@ -216,25 +216,25 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* Metrics */}
         {targetProtein && (
-          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
             <h3 className={`text-xs font-display font-bold uppercase tracking-wider mb-3 ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
               Structure Metrics
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className={`rounded-lg p-3 border transition-colors ${
+              <div className={`rounded-lg p-3 border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-gray-50 border-gray-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-gray-50/80 border-gray-200/50 shadow-sm'
               }`}>
                 <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</p>
                 <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{sequenceLength} aa</p>
               </div>
-              <div className={`rounded-lg p-3 border transition-colors ${
+              <div className={`rounded-lg p-3 border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-gray-50 border-gray-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-gray-50/80 border-gray-200/50 shadow-sm'
               }`}>
                 <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</p>
                 <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{molecularWeight.toFixed(1)} kDa</p>
@@ -245,16 +245,16 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* Sequence - Full Sequence */}
         {targetProtein && sequence && (
-          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
             <h3 className={`text-xs font-display font-bold uppercase tracking-wider mb-3 ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
               Sequence
             </h3>
-            <div className={`rounded-lg p-4 border transition-colors max-h-64 overflow-y-auto ${
+            <div className={`rounded-lg p-4 border backdrop-blur-sm transition-all duration-200 max-h-64 overflow-y-auto ${
               theme === 'dark'
-                ? 'bg-gray-700/50 border-gray-600'
-                : 'bg-gray-50 border-gray-200'
+                ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                : 'bg-gray-50/80 border-gray-200/50 shadow-sm'
             }`}>
               <p className={`font-mono text-xs leading-relaxed break-all whitespace-pre-wrap ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
@@ -268,7 +268,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* PPI Suggestions - Only shown in 3D Viewer */}
         {showPPISuggestions && targetProtein && (
-          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
             <h3 className={`text-xs font-display font-bold uppercase tracking-wider mb-3 ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
@@ -288,10 +288,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                   <button
                     key={index}
                     onClick={() => handleAddPartner(ppi.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all group ${
+                    className={`w-full text-left p-3 rounded-lg border backdrop-blur-sm transition-all duration-200 group hover:scale-[1.02] ${
                       theme === 'dark'
-                        ? 'border-gray-700 hover:border-blue-600 hover:bg-gray-700/50'
-                        : 'border-gray-200 hover:border-primary-300 hover:bg-primary-50'
+                        ? 'border-gray-700/50 hover:border-blue-600/70 hover:bg-gray-700/60 shadow-md'
+                        : 'border-gray-200/50 hover:border-primary-300 hover:bg-primary-50/80 shadow-sm'
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -321,10 +321,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                 ))}
               </div>
             ) : (
-              <div className={`text-center py-8 rounded-lg border ${
+              <div className={`text-center py-8 rounded-lg border backdrop-blur-sm ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-gray-50 border-gray-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-gray-50/80 border-gray-200/50 shadow-sm'
               }`}>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                   No interaction data available
@@ -336,7 +336,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* AI Insights - Only shown in Analysis Dashboard */}
         {!showPPISuggestions && targetProtein && (
-          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
             <div className="flex items-center justify-between mb-3">
               <h3 className={`text-xs font-semibold uppercase tracking-wider ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
@@ -353,10 +353,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
             </div>
 
             <div className="space-y-3">
-              <div className={`rounded-lg p-4 border transition-colors ${
+              <div className={`rounded-lg p-4 border backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] ${
                 theme === 'dark'
-                  ? 'bg-gradient-to-br from-purple-900/20 to-blue-900/20 border-purple-800/50'
-                  : 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-100'
+                  ? 'bg-gradient-to-br from-purple-900/30 to-blue-900/30 border-purple-800/50 shadow-lg'
+                  : 'bg-gradient-to-br from-purple-50/90 to-blue-50/90 border-purple-100/50 shadow-md'
               }`}>
                 <h4 className={`text-sm font-semibold mb-2 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -370,10 +370,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                 </ul>
               </div>
 
-              <div className={`rounded-lg p-4 border transition-colors ${
+              <div className={`rounded-lg p-4 border backdrop-blur-sm transition-all duration-200 hover:scale-[1.02] ${
                 theme === 'dark'
-                  ? 'bg-green-900/20 border-green-800/50'
-                  : 'bg-green-50 border-green-100'
+                  ? 'bg-green-900/30 border-green-800/50 shadow-lg'
+                  : 'bg-green-50/90 border-green-100/50 shadow-md'
               }`}>
                 <h4 className={`text-sm font-semibold mb-2 ${
                   theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -391,7 +391,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* External Resources */}
         {targetProtein && (
-          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`pt-6 border-t ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
             <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
               theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
             }`}>
@@ -421,10 +421,10 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                   href={resource.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors group ${
+                  className={`flex items-center justify-between p-3 rounded-lg border backdrop-blur-sm transition-all duration-200 group hover:scale-[1.02] ${
                     theme === 'dark'
-                      ? 'bg-gray-700/50 hover:bg-gray-700 border-gray-600'
-                      : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
+                      ? 'bg-gray-700/60 hover:bg-gray-700/80 border-gray-600/50 shadow-md'
+                      : 'bg-gray-50/80 hover:bg-gray-100 border-gray-200/50 shadow-sm'
                   }`}
                 >
                   <span className={`text-sm font-medium group-hover:text-primary-600 ${
@@ -443,11 +443,11 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
 
         {/* Empty State */}
         {!targetProtein && (
-          <div className={`pt-6 border-t text-center ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className={`rounded-lg p-8 border-2 border-dashed transition-colors ${
+          <div className={`pt-6 border-t text-center ${theme === 'dark' ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
+            <div className={`rounded-xl p-8 border-2 border-dashed backdrop-blur-sm transition-all duration-300 hover:border-solid ${
               theme === 'dark'
-                ? 'bg-gray-700/50 border-gray-600'
-                : 'bg-gray-50 border-gray-300'
+                ? 'bg-gray-700/60 border-gray-600/50 shadow-lg'
+                : 'bg-gray-50/80 border-gray-300/50 shadow-md'
             }`}>
               <p className={`text-sm mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>No protein loaded</p>
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Use the search bar above to load a protein structure</p>

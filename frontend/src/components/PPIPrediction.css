@@ -769,6 +769,194 @@
   background: #5568d3;
 }
 
+/* Dark Mode Styles */
+.ppi-prediction-container.dark {
+  background: transparent;
+}
+
+.ppi-header.dark h2 {
+  color: #ffffff;
+}
+
+.ppi-header.dark p {
+  color: #d1d5db;
+}
+
+/* Search Input Dark Mode */
+.search-input-wrapper.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.search-input.dark {
+  background: #374151;
+  color: #ffffff;
+}
+
+.search-input.dark::placeholder {
+  color: #9ca3af;
+}
+
+/* Mode Toggle Dark Mode */
+.mode-toggle.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.mode-toggle button.dark {
+  color: #d1d5db;
+  border-color: #4b5563;
+}
+
+.mode-toggle button.dark:hover {
+  border-color: #60a5fa;
+  color: #60a5fa;
+}
+
+.mode-toggle button.dark.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+
+/* Search Suggestions Dark Mode */
+.search-suggestions-dropdown.dark {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.suggestion-item.dark {
+  color: #d1d5db;
+}
+
+.suggestion-item.dark:hover {
+  background: #4b5563;
+}
+
+/* Protein Card Dark Mode */
+.protein-card.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.uniprot-id.dark {
+  background: #1f2937;
+  color: #60a5fa;
+}
+
+/* Selected Protein Card Dark Mode */
+.selected-protein-card.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.empty-slot.dark {
+  color: #9ca3af;
+  border-color: #4b5563;
+  background: #1f2937;
+}
+
+/* New Interaction Info Dark Mode */
+.new-interaction-info.dark {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+/* Prediction Info Box Dark Mode */
+.prediction-info-box.dark {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #bfdbfe;
+}
+
+/* Protein Name Input Dark Mode */
+.protein-name-input.dark {
+  background: #374151;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+
+.protein-name-input.dark::placeholder {
+  color: #9ca3af;
+}
+
+/* Sequence Textarea Dark Mode */
+.sequence-textarea.dark {
+  background: #374151;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+
+.sequence-textarea.dark::placeholder {
+  color: #9ca3af;
+}
+
+/* Progress Section Dark Mode */
+.progress-section.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.progress-header.dark {
+  color: #ffffff;
+}
+
+.progress-bar-container.dark {
+  background: #1f2937;
+}
+
+.progress-steps.dark span {
+  color: #9ca3af;
+}
+
+.progress-steps.dark span.completed {
+  background: #065f46;
+  color: #6ee7b7;
+}
+
+/* Error Message Dark Mode */
+.error-message.dark {
+  background: #7f1d1d;
+  border: 1px solid #991b1b;
+  color: #fca5a5;
+}
+
+/* Result Card Dark Mode */
+.result-card.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+.result-header.dark {
+  border-bottom-color: #4b5563;
+}
+
+/* Visualization Card Dark Mode */
+.visualization-card.dark {
+  background: #374151;
+  border: 1px solid #4b5563;
+}
+
+/* Computation Info Dark Mode */
+.computation-info.dark {
+  background: #1e3a8a;
+  border: 1px solid #3b82f6;
+  color: #bfdbfe;
+}
+
+/* Video Error Dark Mode */
+.video-error.dark {
+  background: #7f1d1d;
+  border: 1px solid #991b1b;
+  color: #fca5a5;
+}
+
+/* Generated Video Container Dark Mode */
+.generated-video-container.dark {
+  background: #374151;
+  border-color: #4b5563;
+}
+
 /* Responsive */
 @media (max-width: 968px) {
   .selected-proteins-grid,

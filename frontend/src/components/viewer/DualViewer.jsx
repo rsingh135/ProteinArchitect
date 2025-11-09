@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Eye, Maximize2, X } from 'lucide-react';
+import { Layers, Maximize2, X } from 'lucide-react';
 import MolecularViewer from './MolecularViewer';
 import InteractionViewer from './InteractionViewer';
 import InteractionStats from './InteractionStats';
@@ -8,6 +8,7 @@ import InteractionViewerModal from './InteractionViewerModal';
 import ProteinOverview from '../shared/ProteinOverview';
 import ProteinViewerModal from './ProteinViewerModal';
 import PartnerSearch from './PartnerSearch';
+import EtherShader from './EtherShader';
 import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
 
@@ -120,10 +121,10 @@ const DualViewer = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className={`flex-1 rounded-lg border shadow-sm p-6 flex flex-col transition-colors ${
+          className={`flex-1 rounded-xl border backdrop-blur-sm p-6 flex flex-col transition-all duration-300 ${
             theme === 'dark'
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-200'
+              ? 'bg-gray-800/80 border-gray-700/50 shadow-lg shadow-black/20'
+              : 'bg-white/90 border-gray-200/50 shadow-md shadow-gray-200/50'
           }`}
         >
               <div className="flex items-center justify-between mb-4">
@@ -147,10 +148,10 @@ const DualViewer = () => {
                 </div>
             <button
               onClick={() => setExpandedViewer('target')}
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2 rounded-lg transition-all duration-200 hover:scale-110 ${
                 theme === 'dark'
-                  ? 'hover:bg-gray-700 text-gray-300'
-                  : 'hover:bg-gray-100 text-gray-600'
+                  ? 'hover:bg-gray-700/70 text-gray-300'
+                  : 'hover:bg-gray-100/70 text-gray-600'
               }`}
               disabled={!targetProtein}
               aria-label="Expand target protein viewer"
@@ -170,41 +171,41 @@ const DualViewer = () => {
             />
           </div>
 
-              {/* Stats for Target Protein */}
-              {targetProtein && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
-                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-gray-700/50 border-gray-700'
-                      : 'bg-blue-50 border-blue-200'
-                  }`}>
-                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Length</div>
-                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
-                    </div>
-                  </div>
-                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-gray-700/50 border-gray-700'
-                      : 'bg-blue-50 border-blue-200'
-                  }`}>
-                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Mass</div>
-                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
-                    </div>
-                  </div>
-                  <div className={`py-3 px-2 rounded-lg border transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-gray-700/50 border-gray-700'
-                      : 'bg-blue-50 border-blue-200'
-                  }`}>
-                    <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>pLDDT</div>
-                    <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
-                    </div>
-                  </div>
+          {/* Stats for Target Protein */}
+          {targetProtein && (
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
+                theme === 'dark'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
                 </div>
-              )}
+              </div>
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
+                theme === 'dark'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
+                </div>
+              </div>
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
+                theme === 'dark'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Right Viewer - Interaction View (when partner exists) or Partner Search */}
@@ -212,10 +213,10 @@ const DualViewer = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className={`flex-1 rounded-lg border shadow-sm p-6 flex flex-col transition-colors ${
+          className={`flex-1 rounded-xl border backdrop-blur-sm p-6 flex flex-col transition-all duration-300 ${
             theme === 'dark'
-              ? 'bg-gray-800 border-gray-700'
-              : 'bg-white border-gray-200'
+              ? 'bg-gray-800/80 border-gray-700/50 shadow-lg shadow-black/20'
+              : 'bg-white/90 border-gray-200/50 shadow-md shadow-gray-200/50'
           }`}
         >
           <div className="flex items-center justify-between mb-4">
@@ -295,10 +296,10 @@ const DualViewer = () => {
               )}
               <button
                 onClick={() => setExpandedViewer('interaction')}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-all duration-200 hover:scale-110 ${
                   theme === 'dark'
-                    ? 'hover:bg-gray-700 text-gray-300'
-                    : 'hover:bg-gray-100 text-gray-600'
+                    ? 'hover:bg-gray-700/70 text-gray-300'
+                    : 'hover:bg-gray-100/70 text-gray-600'
                 }`}
                 disabled={!binderProtein}
                 aria-label="Expand interaction viewer"
@@ -338,23 +339,31 @@ const DualViewer = () => {
 
             {/* Empty State Overlay */}
                 {!binderProtein && (
-            <div className={`absolute inset-0 flex items-center justify-center backdrop-blur-sm rounded-lg ${
-              theme === 'dark' ? 'bg-gray-800/95' : 'bg-gray-50/95'
+            <div className={`absolute inset-0 flex items-center justify-center backdrop-blur-md rounded-xl ${
+              theme === 'dark' ? 'bg-gray-800/90' : 'bg-gray-50/90'
             }`}>
-              <div className="text-center">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                }`}>
-                  <Eye className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
+              <div className="text-center animate-fade-in">
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 overflow-hidden bg-transparent">
+                  <EtherShader width={64} height={64} />
                 </div>
-                <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                <p className={`text-sm mb-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                         Search for a binding partner to visualize interactions
                 </p>
                       <button 
                         onClick={() => setIsPartnerSearchOpen(true)}
-                        className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                        className="group relative px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all duration-300 text-sm font-medium shadow-lg shadow-primary-600/30 hover:shadow-2xl hover:shadow-primary-600/60 transform hover:scale-110 active:scale-100"
+                        style={{
+                          transformOrigin: 'center center'
+                        }}
                       >
-                  Add Partner
+                  <span className="relative z-10">Add Partner</span>
+                  <span 
+                    className="absolute inset-0 rounded-lg bg-primary-400 opacity-0 group-hover:opacity-40 blur-2xl transition-opacity duration-300 -z-0"
+                    style={{
+                      transform: 'scale(1.5)',
+                      transformOrigin: 'center center'
+                    }}
+                  ></span>
                 </button>
               </div>
             </div>
@@ -366,32 +375,32 @@ const DualViewer = () => {
           {/* Stats for Interaction/Partner - 3 stats, symmetrical with left side */}
           {binderProtein && targetProtein && interactionStats ? (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Total Contacts</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total Contacts</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.totalContacts || 0}
                 </div>
               </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Avg Distance</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg Distance</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.averageDistance ? `${interactionStats.averageDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Closest Contact</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Closest Contact</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.minDistance ? `${interactionStats.minDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
@@ -399,32 +408,32 @@ const DualViewer = () => {
             </div>
           ) : binderProtein ? (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Length</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${binderProtein.sequence.length} aa` : '--- aa'}
                 </div>
               </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Mass</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${(binderProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
                 </div>
               </div>
-              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+              <div className={`py-3 px-2 rounded-lg border backdrop-blur-sm transition-all duration-200 hover:scale-105 ${
                 theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-700'
-                  : 'bg-blue-50 border-blue-200'
+                  ? 'bg-gray-700/60 border-gray-600/50 shadow-md'
+                  : 'bg-blue-50/80 border-blue-200/50 shadow-sm'
               }`}>
-                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>pLDDT</div>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
                 </div>
