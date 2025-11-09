@@ -25,6 +25,7 @@ from services.ppi_service import PPIService
 from services.chat_service import ProteinChatService
 from services.alphafold_ppi_service import AlphaFoldPPIService
 from services.veo_video_service import VeoVideoService
+from services.query_converter import QueryConverterService
 
 # Initialize agentic research service (optional - may fail if DEDALUS_API_KEY not set)
 try:
@@ -121,6 +122,15 @@ except Exception as e:
     logger.warning(f"Could not initialize chat service: {e}")
     chat_service = None
 
+# Initialize query converter service
+try:
+    query_converter_service = QueryConverterService()
+    logger.info("Query converter service initialized successfully")
+except Exception as e:
+    logger.warning(f"Could not initialize query converter service: {e}")
+    logger.warning("GEMINI_API_KEY is required for query conversion")
+    query_converter_service = None
+
 # Initialize PPI prediction service (use local for development, SageMaker for production)
 use_local_ppi = os.getenv("USE_LOCAL_PPI", "true").lower() == "true"
 ppi_service = PPIService(use_local=use_local_ppi)
@@ -185,10 +195,11 @@ class PPIVideoRequest(BaseModel):
 
 
 class ProteinResearchRequest(BaseModel):
-    protein_id: str  # UniProt ID (e.g., "P01308")
+    protein_id: str  # UniProt ID (e.g., "P01308") or natural language query (e.g., "human insulin")
     model: Optional[str] = "google/gemini-2.0-flash-lite"  # Model: "google/gemini-2.0-flash-lite" (default)
     include_novel: Optional[bool] = True  # Include novel research section
     months_recent: Optional[int] = 6  # Months to consider for novel research
+    medical_query: Optional[str] = None  # Pre-converted medical query (optional, will be generated if not provided)
 
 
 class ChatMessageRequest(BaseModel):
@@ -477,10 +488,11 @@ async def research_protein(request: ProteinResearchRequest):
     - Citations with hyperlinks
     
     Args:
-        protein_id: UniProt protein ID (e.g., "P01308" for insulin)
-        model: Model to use for research (default: "google/gemini-1.5-flash" - fast, 10 sources max)
+        protein_id: UniProt protein ID (e.g., "P01308") or natural language query (e.g., "human insulin")
+        model: Model to use for research (default: "google/gemini-2.0-flash-lite")
         include_novel: Whether to include novel/recent research section
         months_recent: Number of months to consider for "novel" research
+        medical_query: Pre-converted medical query (optional, will be auto-generated if not provided)
     
     Returns:
         Structured research results with citations, papers, use cases, 
@@ -493,16 +505,61 @@ async def research_protein(request: ProteinResearchRequest):
                 detail="AgenticResearch service not available. Please set DEDALUS_API_KEY environment variable."
             )
         
-        # Validate protein ID format (basic check)
-        if not request.protein_id or len(request.protein_id.strip()) == 0:
+        # Validate input
+        user_input = request.protein_id.strip() if request.protein_id else ""
+        if not user_input:
             raise HTTPException(status_code=400, detail="protein_id is required")
         
-        # Conduct research
+        # STEP 1: Convert user input to medical query if not provided
+        medical_query = request.medical_query
+        resolved_protein_id = None
+        
+        if query_converter_service and not medical_query:
+            try:
+                logger.info(f"Converting user input to medical query: '{user_input}'")
+                
+                # First, try to fetch protein info if it looks like a UniProt ID
+                protein_info = None
+                import re
+                if re.match(r'^[A-Z0-9]{6,10}$', user_input.upper()):
+                    # Looks like a UniProt ID - fetch info first
+                    try:
+                        protein_info = await agentic_research_service._fetch_protein_info(user_input.upper())
+                    except Exception as e:
+                        logger.warning(f"Could not fetch protein info for conversion: {e}")
+                
+                # Convert to medical query
+                conversion_result = query_converter_service.convert_to_medical_query(
+                    user_input,
+                    protein_info
+                )
+                
+                medical_query = conversion_result.get("medical_query", user_input)
+                resolved_protein_id = conversion_result.get("protein_id") or user_input.upper() if re.match(r'^[A-Z0-9]{6,10}$', user_input.upper()) else None
+                
+                logger.info(f"Converted query: '{user_input}' -> Medical query: '{medical_query}'")
+                logger.info(f"Resolved protein ID: {resolved_protein_id}")
+                
+            except Exception as e:
+                logger.warning(f"Query conversion failed: {e}, using original input")
+                medical_query = user_input
+                resolved_protein_id = user_input.upper() if re.match(r'^[A-Z0-9]{6,10}$', user_input.upper()) else None
+        else:
+            # Use provided medical_query or fallback to user_input
+            medical_query = medical_query or user_input
+            import re
+            resolved_protein_id = user_input.upper() if re.match(r'^[A-Z0-9]{6,10}$', user_input.upper()) else None
+        
+        # STEP 2: Conduct research with medical query
+        # Use resolved_protein_id if we have it, otherwise use the original input
+        protein_id_for_research = resolved_protein_id or user_input
+        
         results = await agentic_research_service.research_protein(
-            protein_id=request.protein_id.strip(),
+            protein_id=protein_id_for_research,
             model=request.model or "google/gemini-2.0-flash-lite",
             include_novel=request.include_novel if request.include_novel is not None else True,
-            months_recent=request.months_recent or 6
+            months_recent=request.months_recent or 6,
+            medical_query=medical_query  # Pass medical query to research service
         )
         
         return results

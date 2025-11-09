@@ -32,9 +32,11 @@ const ResearchOverview = () => {
         authors: p.authors || '',
         journal: p.journal || 'Not specified',
         year: p.year || new Date().getFullYear().toString(),
-        doi: p.doi || 'Not available',
+        doi: p.doi || (p.pmid ? `PMID: ${p.pmid}` : 'Not available'),
+        pmid: p.pmid || '',
         link: p.link || '',
-        description: p.description || p.title || '',
+        summary: p.summary || 'N/A',  // Use summary field, default to N/A if missing
+        description: p.description || 'N/A',  // Use description field, default to N/A if missing
         citationNumber: p.citationNumber || (idx + 1).toString(),
         isRecent: p.year && parseInt(p.year) >= new Date().getFullYear() - 2
       }));
@@ -289,7 +291,7 @@ const ResearchOverview = () => {
             <RainbowSpinner size={80} className="mb-6" />
             <h3 className={`text-2xl font-medium mb-2 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Researching Protein...</h3>
             <p className={`text-base ${theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}`}>Gathering comprehensive information from academic databases and web sources</p>
-            {researchQuery && (
+              {researchQuery && (
               <p className={`text-base mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}`}>
                 Researching: <span className="font-mono font-semibold">{researchQuery}</span>
               </p>
@@ -681,7 +683,7 @@ const ResearchOverview = () => {
                           <p className={theme === 'dark' ? 'text-gray-300' : 'text-slate-600'}>No citations available.</p>
                         )}
                       </div>
-                    </div>
+          </div>
                   </CardContent>
                 </Card>
               </TabsContent>

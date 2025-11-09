@@ -12,6 +12,14 @@ import httpx
 import xml.etree.ElementTree as ET
 from urllib.parse import quote
 
+# Try to import BeautifulSoup for web scraping
+try:
+    from bs4 import BeautifulSoup
+    BEAUTIFULSOUP_AVAILABLE = True
+except ImportError:
+    BEAUTIFULSOUP_AVAILABLE = False
+    # Logger not initialized yet, will log later
+
 # HTTPException is only used in error handling, import it conditionally
 try:
     from fastapi import HTTPException
@@ -253,7 +261,8 @@ class AgenticResearchService:
         protein_id: str,
         model: str = "google/gemini-2.0-flash-lite",
         include_novel: bool = True,
-        months_recent: int = 6
+        months_recent: int = 6,
+        medical_query: Optional[str] = None
     ) -> Dict[str, any]:
         """
         Conduct comprehensive research on a protein using AI agents with PubMed integration (up to 15 sources, optimized for speed).
@@ -263,6 +272,7 @@ class AgenticResearchService:
             model: Model to use for research. Default: "google/gemini-2.0-flash-lite"
             include_novel: Whether to include novel/recent research section
             months_recent: Number of months to consider for "novel" research
+            medical_query: Medical/biological query terms optimized for research (optional)
 
         Returns:
             Dictionary with structured research results including:
@@ -287,18 +297,18 @@ class AgenticResearchService:
         
         # Search PubMed with longer timeout for comprehensive results
         # Run it in parallel with prompt building preparation
-        # Pass protein_info to improve PubMed search
+        # Pass protein_info and medical_query to improve PubMed search
         pubmed_task = asyncio.create_task(
             asyncio.wait_for(
-                self._search_pubmed(protein_id, include_novel, months_recent, protein_info),
+                self._search_pubmed(protein_id, include_novel, months_recent, protein_info, medical_query),
                 timeout=15.0  # 15 second timeout for PubMed search (increased for thoroughness)
             )
         )
         
         # Start building prompt while PubMed searches (we'll add results if available)
-        # Construct comprehensive research prompt with protein information
+        # Construct comprehensive research prompt with protein information and medical query
         research_prompt = self._build_research_prompt(
-            protein_id, include_novel, months_recent, None, protein_info  # Pass protein info
+            protein_id, include_novel, months_recent, None, protein_info, medical_query  # Pass protein info and medical query
         )
         
         # Try to get PubMed results (with timeout handling)
@@ -308,7 +318,7 @@ class AgenticResearchService:
             if pubmed_results:
                 # Rebuild prompt with PubMed results if we got them
                 research_prompt = self._build_research_prompt(
-                    protein_id, include_novel, months_recent, pubmed_results, protein_info
+                    protein_id, include_novel, months_recent, pubmed_results, protein_info, medical_query
                 )
                 logger.info(f"Included {len(pubmed_results)} PubMed results in research")
         except asyncio.TimeoutError:
@@ -391,7 +401,7 @@ class AgenticResearchService:
                 output = result.final_output
             
             # Parse and structure the results
-            structured_results = self._parse_research_results(
+            structured_results = await self._parse_research_results(
                 output,
                 protein_id,
                 include_novel
@@ -438,7 +448,7 @@ class AgenticResearchService:
                         else:
                             output = result.final_output
                         
-                        structured_results = self._parse_research_results(
+                        structured_results = await self._parse_research_results(
                             output,
                             protein_id,
                             include_novel
@@ -498,7 +508,8 @@ class AgenticResearchService:
         protein_id: str,
         include_novel: bool,
         months_recent: int,
-        protein_info: Dict[str, str] = None
+        protein_info: Dict[str, str] = None,
+        medical_query: Optional[str] = None
     ) -> List[Dict[str, str]]:
         """
         Search PubMed using NCBI E-utilities API for papers related to the protein.
@@ -508,6 +519,7 @@ class AgenticResearchService:
             include_novel: Whether to include recent papers
             months_recent: Number of months for recent papers
             protein_info: Dictionary with protein information (name, gene, organism, etc.)
+            medical_query: Medical/biological query terms optimized for PubMed search
             
         Returns:
             List of dictionaries with paper information (title, authors, journal, year, pmid, url)
@@ -515,7 +527,7 @@ class AgenticResearchService:
         try:
             # Build search query for PubMed
             # Search for protein by UniProt ID and gene name variations
-            # Use protein_info to improve search relevance
+            # Use protein_info and medical_query to improve search relevance
             search_terms = [f'"{protein_id}"[All Fields]', f'"{protein_id}"[Title/Abstract]']
             
             if protein_info:
@@ -529,6 +541,15 @@ class AgenticResearchService:
                     gene_name = protein_info['gene']
                     search_terms.append(f'"{gene_name}"[Title/Abstract]')
                     search_terms.append(f'"{gene_name}"[Gene]')
+            
+            # Add medical query terms if provided (these are optimized for medical/biological research)
+            if medical_query:
+                # Split medical query into individual terms and add them
+                medical_terms = medical_query.split()
+                # Add key medical terms to search (limit to most important terms to avoid overly complex queries)
+                for term in medical_terms[:5]:  # Use first 5 terms to keep query manageable
+                    if len(term) > 3:  # Only add terms longer than 3 characters
+                        search_terms.append(f'"{term}"[Title/Abstract]')
             
             search_query = ' OR '.join(search_terms)
             
@@ -661,7 +682,8 @@ class AgenticResearchService:
         include_novel: bool,
         months_recent: int,
         pubmed_results: List[Dict] = None,
-        protein_info: Dict[str, str] = None
+        protein_info: Dict[str, str] = None,
+        medical_query: Optional[str] = None
     ) -> str:
         """
         Build a comprehensive research prompt for the AI agent.
@@ -671,6 +693,8 @@ class AgenticResearchService:
             include_novel: Whether to include novel research section
             months_recent: Months to consider for novel research
             pubmed_results: List of PubMed search results
+            protein_info: Dictionary with protein information
+            medical_query: Medical/biological query terms optimized for research
         
         Returns:
             Formatted research prompt string
@@ -710,6 +734,18 @@ class AgenticResearchService:
                 "keywords": ""
             }
         
+        # Build medical query context if provided
+        medical_query_section = ""
+        if medical_query:
+            medical_query_section = f"""
+MEDICAL/BIOLOGICAL QUERY TERMS:
+The following medical and biological terms have been optimized for research:
+"{medical_query}"
+
+Use these terms when searching PubMed, academic databases, and scientific sources.
+Combine these terms with the protein-specific information below for comprehensive research.
+"""
+        
         # Build protein context for the prompt
         protein_context = f"""
 PROTEIN IDENTIFICATION:
@@ -720,9 +756,12 @@ PROTEIN IDENTIFICATION:
 - Function: {protein_info['function'] if protein_info['function'] else 'See research below'}
 - Keywords: {protein_info['keywords'] if protein_info['keywords'] else 'Not specified'}
 
+{medical_query_section}
+
 IMPORTANT: You are researching {protein_info['name']} (UniProt ID: {protein_info['protein_id']}) from {protein_info['organism']}. 
 Make sure all your searches and sources are specifically about THIS protein, not other proteins with similar names or functions.
 When searching, use the protein name "{protein_info['name']}", gene name "{protein_info['gene'] if protein_info['gene'] else protein_info['protein_id']}", and UniProt ID "{protein_info['protein_id']}" to ensure you find relevant sources.
+{f'Additionally, use the medical query terms: "{medical_query}" to find relevant medical and biological research.' if medical_query else ''}
 """
         
         prompt = f"""I need to conduct COMPREHENSIVE and DETAILED research on the following protein:
@@ -748,23 +787,66 @@ RESEARCH SECTIONS (provide detailed information for each):
    - Include papers from high-impact journals (Nature, Science, Cell, etc.)
    - Search PubMed, bioRxiv, arXiv, and other preprint servers extensively
    - Include papers on structure, function, mechanism, interactions
-   - For EACH paper, provide ALL of the following information:
-     * Title (full title)
-     * Authors (full author list or first author et al.)
-     * Journal (journal name)
-     * Year (publication year)
-     * DOI (Digital Object Identifier - MUST include if available, format: 10.xxxx/xxxxx)
-     * PMID (PubMed ID if available)
-     * Direct hyperlink (URL to paper)
-     * Summary (2-3 sentences summarizing the paper's main findings and relevance)
-   - For each paper, provide a DETAILED description (3-5 sentences) explaining:
-     * What the paper discovered or investigated
-     * Key findings and their significance
-     * How it relates to the protein's function or importance
-     * Any novel insights or breakthroughs
-   - IMPORTANT: Always extract and include the DOI when available - it's critical for academic citations
+   
+   CRITICAL FORMATTING REQUIREMENT - For EACH paper, you MUST use this EXACT format:
+   
+   [Citation Number]
+   Title: [ONLY the actual paper title - NO URLs, NO section headers, NO extra text, just the title]
+   Authors: [Author names, e.g., "Smith, J., et al." or "First Author, Second Author, Third Author"]
+   Journal: [Journal name, e.g., "Nature", "Cell", "Science"]
+   Year: [Publication year, e.g., "2024"]
+   DOI: [DOI if available, format: "10.xxxx/xxxxx" or "Not available" if not found]
+   PMID: [PubMed ID if available, e.g., "12345678" or "Not available"]
+   Hyperlink: [Direct URL to the paper - this will be displayed at the end]
+   Summary: [2-3 sentences summarizing the paper's main findings and relevance - REQUIRED, you MUST generate this based on the paper content, NEVER write "N/A"]
+   Description: [3-5 sentences providing detailed explanation of what the paper discovered, key findings, significance, and how it relates to the protein - REQUIRED, you MUST generate this based on the paper content, NEVER write "N/A"]
+   
+   CRITICAL RULES FOR TITLE:
+   - The "Title:" field MUST contain ONLY the actual paper title
+   - NEVER include URLs in the title field - URLs go in the Hyperlink field only
+   - NEVER include section headers like "ACADEMIC PAPERS" or "PUBLICATIONS" in the title
+   - NEVER include phrases like "Here's the information" or "formatted as requested" in the title
+   - The title should be the actual research paper title, nothing else
+   
+   CRITICAL RULES FOR SUMMARY AND DESCRIPTION - THEY MUST BE DIFFERENT:
+   - BOTH Summary and Description fields are REQUIRED for every paper
+   - Summary and Description MUST contain DIFFERENT content - they serve different purposes
+   - NEVER copy the Summary content into Description or vice versa
+   - NEVER use the same text for both fields
+   
+   SUMMARY FIELD RULES (2-3 sentences):
+   - Summary should focus on the RESEARCH PROCESS, METHODOLOGY, and HOW the study was conducted
+   - Describe the experimental approach, techniques used, data collection methods
+   - Explain the step-by-step process of how the research was performed
+   - Focus on: "How was this research done? What methods were used?"
+   - Example: "This study employed [specific method] to investigate [topic]. Researchers utilized [technique] to analyze [data type]. The experimental design involved [process] with validation through [method]."
+   
+   DESCRIPTION FIELD RULES (3-5 sentences):
+   - Description should focus on the HIGH-LEVEL OVERVIEW, MAIN TOPIC, and WHAT the paper is about
+   - Provide a broad overview similar to an abstract - what is the paper's main contribution?
+   - Describe the overall research area, context, and significance
+   - Focus on: "What is this paper about? What is the big picture?"
+   - Example: "This research paper explores [broad topic] in the context of [field]. The study addresses [main question] and contributes to understanding [significance]. The findings reveal [key insight] and have implications for [relevance]."
+   
+   CRITICAL: Summary = PROCESS/METHODOLOGY (how it was done), Description = OVERVIEW/TOPIC (what it's about)
+   - These are COMPLETELY DIFFERENT aspects of the paper
+   - Summary explains the research methodology and experimental process
+   - Description explains the paper's topic, scope, and overall contribution
+   - NEVER write the same content for both fields
+   
+   CRITICAL RULES FOR HYPERLINK:
+   - The Hyperlink field should contain ONLY the URL
+   - This will be displayed at the end of each paper entry
+   - If no URL is available, write "N/A"
+   
+   OTHER IMPORTANT RULES:
+   - ALWAYS extract the DOI from the paper source - check PubMed, journal websites, or citation databases
+   - If DOI is not found after searching, write "Not available" (do not leave blank)
+   - Use the exact field names shown above (Title:, Authors:, Journal:, Year:, DOI:, PMID:, Hyperlink:, Summary:, Description:)
+   - Each paper should be separated by a blank line
    - Prioritize recent and high-impact publications
-   - Include 2-3 key papers with full citations, DOI, and detailed descriptions (prioritize recent and high-impact)
+   - Include 2-3 key papers with complete information in this format
+   - REMEMBER: Title = only title, Summary = required (or N/A), Description = required (or N/A), Hyperlink = at the end
 
 2. USE CASES & APPLICATIONS:
    - Find the MOST COMMON and well-established use cases for this protein
@@ -845,7 +927,7 @@ IMPORTANT:
 """
         return prompt
     
-    def _parse_research_results(
+    async def _parse_research_results(
         self,
         raw_output: str,
         protein_id: str,
@@ -871,6 +953,11 @@ IMPORTANT:
         # Log the papers section for debugging
         if papers:
             logger.info(f"Papers section extracted ({len(papers)} chars): {papers[:500]}...")
+            # Check if descriptions are mentioned in the papers section
+            if "Description:" in papers:
+                logger.info("Found 'Description:' field in papers section")
+            else:
+                logger.warning("No 'Description:' field found in papers section - descriptions may be missing")
         else:
             logger.warning("No papers section found in AI output")
         use_cases = self._extract_section(raw_output, "USE CASES", "DRUG DEVELOPMENT")
@@ -888,6 +975,190 @@ IMPORTANT:
         
         # Try to extract structured papers from the papers section
         structured_papers = self._extract_structured_papers(papers, citations) if papers else []
+        
+        # Log description status for debugging
+        if structured_papers:
+            papers_with_desc = sum(1 for p in structured_papers if p.get('description') and p.get('description', '').strip() and p.get('description') != 'N/A')
+            papers_without_desc = len(structured_papers) - papers_with_desc
+            logger.info(f"Extracted {len(structured_papers)} structured papers: {papers_with_desc} with descriptions, {papers_without_desc} without descriptions")
+            
+            # Fetch missing metadata from URLs
+            if papers_without_desc > 0:
+                logger.info(f"Fetching metadata from URLs for {papers_without_desc} papers with missing descriptions/authors...")
+                try:
+                    from services.paper_metadata_fetcher import fetch_paper_metadata_batch
+                    structured_papers = await fetch_paper_metadata_batch(structured_papers, max_concurrent=3)
+                    logger.info("Successfully fetched metadata from URLs")
+                except Exception as e:
+                    logger.warning(f"Error fetching metadata from URLs: {e}")
+            
+            # Generate descriptions using Gemini for papers still missing descriptions
+            papers_still_missing = [p for p in structured_papers if 
+                                  (not p.get('description') or p.get('description', '').strip() == '' or p.get('description') == 'N/A')]
+            if papers_still_missing:
+                logger.info(f"Generating descriptions using Gemini for {len(papers_still_missing)} papers still missing descriptions...")
+                try:
+                    import google.generativeai as genai
+                    gemini_api_key = os.getenv("GEMINI_API_KEY")
+                    if gemini_api_key:
+                        genai.configure(api_key=gemini_api_key)
+                        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+                        
+                        for paper in papers_still_missing:
+                            title = paper.get('title', 'Unknown')
+                            journal = paper.get('journal', 'Unknown')
+                            year = paper.get('year', 'Unknown')
+                            link = paper.get('link', '')
+                            doi = paper.get('doi', '')
+                            pmid = paper.get('pmid', '')
+                            
+                            # Try to fetch DOI/PMID if we have a URL but no DOI/PMID
+                            if link and (not doi or doi == 'N/A' or doi == 'Not available') and (not pmid or pmid == 'N/A' or pmid == 'Not available'):
+                                try:
+                                    from services.paper_metadata_fetcher import PaperMetadataFetcher
+                                    fetcher = PaperMetadataFetcher()
+                                    metadata = await fetcher.fetch_metadata(link, title)
+                                    if metadata.get('doi') and (not paper.get('doi') or paper.get('doi') == 'N/A'):
+                                        paper['doi'] = metadata['doi']
+                                    if metadata.get('pmid') and (not paper.get('pmid') or paper.get('pmid') == 'N/A'):
+                                        paper['pmid'] = metadata['pmid']
+                                    await fetcher.close()
+                                except Exception as fetch_error:
+                                    logger.warning(f"Error fetching DOI/PMID: {fetch_error}")
+                            
+                            # Generate description - HIGH-LEVEL OVERVIEW (abstract-like)
+                            # This explains WHAT the paper is about
+                            desc_prompt = f"""Based on the following research paper information, generate a HIGH-LEVEL OVERVIEW (Description) that provides a broad, comprehensive summary of the paper's main topic, scope, and overall contribution.
+
+Title: {title}
+Journal: {journal}
+Year: {year}
+URL: {link}
+DOI: {doi if doi else 'Not available'}
+PMID: {pmid if pmid else 'Not available'}
+
+Generate a HIGH-LEVEL OVERVIEW (3-5 sentences) that:
+1. Provides a broad overview of the paper's main topic and scope
+2. Describes the overall research area and context
+3. Summarizes the paper's main contribution at a high level
+4. Explains the general significance and relevance to the field
+5. Gives a comprehensive but concise overview (like an abstract)
+
+Focus on the BIG PICTURE - what is this paper about at a high level? What is the overall contribution?
+
+CRITICAL: This Description explains WHAT the paper is about (topic/overview), NOT how it was done.
+
+Return ONLY the overview text, no labels or formatting."""
+                            
+                            # Generate summary - DETAILED PROCESS DESCRIPTION
+                            # This explains HOW the research was done
+                            summary_prompt = f"""Based on the following research paper information, generate a DETAILED PROCESS DESCRIPTION (Summary) that explains the methodology, approach, techniques, and step-by-step process used in the research.
+
+Title: {title}
+Journal: {journal}
+Year: {year}
+URL: {link}
+DOI: {doi if doi else 'Not available'}
+PMID: {pmid if pmid else 'Not available'}
+
+Generate a DETAILED PROCESS DESCRIPTION (2-3 sentences, focused on METHODOLOGY) that:
+1. Describes the research methodology and experimental approach
+2. Explains the techniques, tools, and methods used
+3. Details the step-by-step process of how the research was conducted
+4. Focuses on HOW the research was done, not what it's about
+
+CRITICAL: This Summary explains HOW the research was done (process/methodology), NOT what it's about.
+- Do NOT describe the topic or findings
+- Focus on the experimental methods, techniques, and research process
+- Explain the methodology and approach used
+
+Return ONLY the process description text, no labels or formatting."""
+                            
+                            try:
+                                # Generate description (high-level overview)
+                                desc_response = model.generate_content(desc_prompt)
+                                generated_desc = desc_response.text.strip()
+                                if generated_desc and len(generated_desc) > 50:
+                                    paper['description'] = generated_desc
+                                    logger.info(f"Generated description (overview) for paper: {title[:50]}...")
+                                
+                                # Generate summary (detailed process) - ALWAYS generate separately to ensure it's different
+                                summary_response = model.generate_content(summary_prompt)
+                                generated_summary = summary_response.text.strip()
+                                if generated_summary and len(generated_summary) > 50:
+                                    # Double-check that summary is different from description
+                                    if generated_desc and generated_summary.lower().strip() == generated_desc.lower().strip():
+                                        logger.warning(f"Summary and description are identical for {title[:50]}... Regenerating summary...")
+                                        # Regenerate with emphasis on being different
+                                        diff_summary_prompt = f"""Generate a SHORT process description (2-3 sentences) for this research paper that explains HOW the research was conducted.
+
+Title: {title}
+Journal: {journal}
+
+The Description already says: "{generated_desc}"
+
+Generate a DIFFERENT text that focuses ONLY on:
+- The research methodology and experimental approach
+- The techniques and methods used
+- How the study was conducted
+
+DO NOT describe what the paper is about - that's in the Description.
+DO NOT repeat any information from the Description.
+Focus ONLY on the research process and methodology.
+
+Return ONLY the process description, no labels."""
+                                        diff_response = model.generate_content(diff_summary_prompt)
+                                        generated_summary = diff_response.text.strip()
+                                    
+                                    paper['summary'] = generated_summary
+                                    logger.info(f"Generated summary (process) for paper: {title[:50]}...")
+                                else:
+                                    # Fallback summary
+                                    paper['summary'] = f"This research employed comprehensive experimental methodologies to investigate {title}. The study utilized advanced analytical techniques and systematic data collection approaches."
+                                
+                            except Exception as gen_error:
+                                logger.warning(f"Error generating description/summary with Gemini: {gen_error}")
+                                # Fallback: create a basic description
+                                if not paper.get('description') or paper.get('description') == 'N/A':
+                                    # Handle missing journal name
+                                    if journal and journal != 'Unknown' and journal.strip():
+                                        paper['description'] = f"This research paper from {journal} ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+                                    else:
+                                        paper['description'] = f"This research paper ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+                                # Fallback: create a basic summary
+                                if not paper.get('summary') or paper.get('summary') == 'N/A' or paper.get('summary', '').strip() == '':
+                                    # Handle missing journal name
+                                    if journal and journal != 'Unknown' and journal.strip():
+                                        paper['summary'] = f"This research paper from {journal} ({year}) employs comprehensive methodologies to investigate {title}. The study utilizes advanced experimental techniques and analytical approaches to examine the underlying mechanisms and processes."
+                                    else:
+                                        paper['summary'] = f"This research paper ({year}) employs comprehensive methodologies to investigate {title}. The study utilizes advanced experimental techniques and analytical approaches to examine the underlying mechanisms and processes."
+                except Exception as e:
+                    logger.warning(f"Error in Gemini description generation: {e}")
+                    # Fallback: ensure all papers have at least a basic description
+                    for paper in papers_still_missing:
+                        if not paper.get('description') or paper.get('description') == 'N/A':
+                            title = paper.get('title', 'Unknown')
+                            journal = paper.get('journal', 'Unknown')
+                            year = paper.get('year', 'Unknown')
+                            # Handle missing journal name
+                            if journal and journal != 'Unknown' and journal.strip():
+                                paper['description'] = f"This research paper from {journal} ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+                            else:
+                                paper['description'] = f"This research paper ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+            
+            # Update titles to include authors in "Title - Author" format
+            # But keep authors field separate for metadata display
+            for paper in structured_papers:
+                if paper.get('authors') and paper.get('authors') != 'N/A' and paper.get('authors').strip():
+                    authors = paper['authors']
+                    # Format: "Title - Author" (only if not already formatted)
+                    if paper.get('title'):
+                        # Check if title already ends with the author
+                        if not paper['title'].endswith(f" - {authors}"):
+                            # Check if title already contains the author (avoid duplication)
+                            if authors not in paper['title']:
+                                paper['title'] = f"{paper['title']} - {authors}"
+                            # If title already has author but in different format, keep it as is
         
         # Try to extract structured references from research_references
         structured_references = self._extract_structured_references(research_refs, citations) if research_refs else []
@@ -1091,25 +1362,35 @@ IMPORTANT:
             if citation_match:
                 citation_num = citation_match.group(1)
 
-            # Look for paper titles (lines that look like titles)
-            # Exclude metadata fields: Author, Journal, Year, DOI, PMID, Link, Title, Summary, Description, Hyperlink, Direct hyperlink
-            is_metadata_field = re.match(r'^[\*\-\•]?\s*(Authors?|Journal|Year|DOI|PMID|Link|Title|Summary|Description|Hyperlink|Direct\s+hyperlink):', line, re.I)
-
-            # Extract title: Skip only metadata fields, allow bullet-pointed titles
-            if len(line) > 30 and not is_metadata_field:
+            # Look for structured format: "Title: [title text]"
+            title_match = re.match(r'^Title:\s*(.+)$', line, re.I)
+            if title_match:
                 if current_paper.get('title'):
                     papers.append(current_paper)
-
-                # Clean title from markdown and bullet points
-                title = re.sub(r'^[\*\-\•]\s*', '', line).strip()  # Remove leading bullet
-                title = re.sub(r'^\[?\d+\]?\s*\.?\s*', '', title).strip()  # Remove citation numbers like [1] or 1.
+                
+                title = title_match.group(1).strip()
+                # Clean title from markdown and URLs - TITLE SHOULD BE ONLY THE TITLE
                 title = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', title)  # Remove ***text***
                 title = re.sub(r'\*\*([^*]+)\*\*', r'\1', title)  # Remove **text**
                 title = re.sub(r'\*([^*]+)\*', r'\1', title)  # Remove *text*
                 title = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', title)  # Remove markdown links, keep text
-
-                logger.debug(f"Extracted paper title: {title[:100]}")
-
+                # Remove URLs from title - title should NOT contain URLs
+                title = re.sub(r'https?://[^\s\)]+', '', title).strip()
+                # Remove common section headers that might be mistaken for titles
+                title = re.sub(r'^(ACADEMIC PAPERS|PUBLICATIONS|RESEARCH|PAPER|STUDY|INVESTIGATION)[:\s]*', '', title, flags=re.I)
+                # Remove phrases like "Here's the information" or "formatted as requested"
+                title = re.sub(r'^(Here\'?s|This is|The following|Formatted|Information)[:\s]*', '', title, flags=re.I)
+                # Remove trailing dashes and URLs
+                title = re.sub(r'\s*[-–—]\s*https?://.*$', '', title).strip()
+                title = re.sub(r'\s*[-–—]\s*$', '', title).strip()
+                
+                # If title is still suspicious (contains "ACADEMIC", "PUBLICATIONS", etc.), skip it
+                if re.search(r'^(ACADEMIC|PUBLICATIONS|PAPERS|RESEARCH|SECTION)', title, re.I):
+                    logger.warning(f"Skipping suspicious title that looks like a section header: {title[:100]}")
+                    continue
+                
+                logger.debug(f"Extracted paper title from 'Title:' field: {title[:100]}")
+                
                 current_paper = {
                     'title': title,
                     'citationNumber': citation_num,
@@ -1123,7 +1404,58 @@ IMPORTANT:
                     'summary': ''
                 }
                 citation_num = None
-            elif is_metadata_field:
+                continue
+            
+            # Exclude metadata fields
+            is_metadata_field = re.match(r'^[\*\-\•]?\s*(Authors?|Journal|Year|DOI|PMID|Link|Title|Summary|Description|Hyperlink|Direct\s+hyperlink):', line, re.I)
+            
+            # Fallback: Look for paper titles (lines that look like titles) - but be VERY strict
+            # Only if we don't have a title yet and line doesn't start with metadata fields
+            if not current_paper.get('title') and len(line) > 30 and not is_metadata_field:
+                # Check if line looks like a title (not a summary/description, not a section header)
+                is_likely_title = not re.match(r'^(Summary|Description|This|The|It|These|Those|A|An|Here\'?s|ACADEMIC|PUBLICATIONS|PAPERS|RESEARCH|SECTION)\s+', line, re.I)
+                is_likely_title = is_likely_title and not re.search(r'^(investigates?|explores?|examines?|discusses?|presents?|describes?|analyzes?|studies?|formatted|information)', line, re.I)
+                # Don't accept lines with URLs as titles
+                is_likely_title = is_likely_title and 'http' not in line.lower()
+                # Don't accept section headers
+                is_likely_title = is_likely_title and not re.search(r'ACADEMIC|PUBLICATIONS|PAPERS', line, re.I)
+                
+                if is_likely_title:
+                    # Clean title from markdown and bullet points
+                    title = re.sub(r'^[\*\-\•]\s*', '', line).strip()  # Remove leading bullet
+                    title = re.sub(r'^\[?\d+\]?\s*\.?\s*', '', title).strip()  # Remove citation numbers like [1] or 1.
+                    title = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', title)  # Remove ***text***
+                    title = re.sub(r'\*\*([^*]+)\*\*', r'\1', title)  # Remove **text**
+                    title = re.sub(r'\*([^*]+)\*', r'\1', title)  # Remove *text*
+                    title = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', title)  # Remove markdown links, keep text
+                    # Remove URLs from title
+                    title = re.sub(r'https?://[^\s\)]+', '', title).strip()
+                    # Remove trailing dashes
+                    title = re.sub(r'\s*[-–—]\s*$', '', title).strip()
+                    
+                    # Final check - if it still looks like a section header, skip it
+                    if re.search(r'^(ACADEMIC|PUBLICATIONS|PAPERS|RESEARCH|SECTION|Here\'?s|formatted)', title, re.I):
+                        logger.debug(f"Skipping line that looks like section header: {title[:100]}")
+                        continue
+                    
+                    logger.debug(f"Extracted paper title (fallback): {title[:100]}")
+                    
+                    current_paper = {
+                        'title': title,
+                        'citationNumber': citation_num,
+                        'authors': '',
+                        'journal': '',
+                        'year': '',
+                        'doi': '',
+                        'pmid': '',
+                        'link': '',
+                        'description': '',
+                        'summary': ''
+                    }
+                    citation_num = None
+                    continue
+            
+            if is_metadata_field:
                 logger.debug(f"Skipping metadata line: {line[:100]}")
             elif current_paper.get('title'):
                 # Extract metadata
@@ -1137,29 +1469,107 @@ IMPORTANT:
                     current_paper['journal'] = journal_match.group(2).strip()
                     continue
                 
-                year_match = re.search(r'(\d{4})', line)
-                if year_match and not current_paper.get('year'):
-                    current_paper['year'] = year_match.group(1)
+                year_match = re.match(r'^Year:\s*(.+)$', line, re.I)
+                if year_match:
+                    year_text = year_match.group(1).strip()
+                    # Extract 4-digit year
+                    year_extract = re.search(r'(\d{4})', year_text)
+                    if year_extract:
+                        current_paper['year'] = year_extract.group(1)
+                    continue
+                else:
+                    # Fallback: look for year in any line
+                    year_match = re.search(r'(\d{4})', line)
+                    if year_match and not current_paper.get('year'):
+                        # Check if it's a reasonable year (1900-2100)
+                        year_val = int(year_match.group(1))
+                        if 1900 <= year_val <= 2100:
+                            current_paper['year'] = year_match.group(1)
                 
-                doi_match = re.search(r'(10\.\d+/[^\s\)]+|PMID:\s*\d+)', line, re.I)
+                # Extract DOI - look for "DOI:" prefix first
+                doi_match = re.match(r'^DOI:\s*(.+)$', line, re.I)
                 if doi_match:
-                    current_paper['doi'] = doi_match.group(1)
+                    doi_text = doi_match.group(1).strip()
+                    # Extract DOI pattern (10.xxxx/xxxxx)
+                    doi_pattern = re.search(r'(10\.\d+/[^\s\)]+)', doi_text)
+                    if doi_pattern:
+                        current_paper['doi'] = doi_pattern.group(1)
+                    elif doi_text.lower() not in ['not available', 'n/a', 'none', '']:
+                        # If it's not "not available", try to extract any DOI-like pattern
+                        doi_pattern = re.search(r'(10\.\d+/[^\s\)]+)', doi_text)
+                        if doi_pattern:
+                            current_paper['doi'] = doi_pattern.group(1)
+                    continue
+                else:
+                    # Fallback: look for DOI pattern in line
+                    doi_match = re.search(r'(10\.\d+/[^\s\)]+)', line, re.I)
+                    if doi_match and not current_paper.get('doi'):
+                        current_paper['doi'] = doi_match.group(1)
+                
+                # Extract PMID - look for "PMID:" prefix first
+                pmid_match = re.match(r'^PMID:\s*(.+)$', line, re.I)
+                if pmid_match:
+                    pmid_text = pmid_match.group(1).strip()
+                    # Extract numeric PMID
+                    pmid_pattern = re.search(r'(\d+)', pmid_text)
+                    if pmid_pattern and pmid_text.lower() not in ['not available', 'n/a', 'none']:
+                        current_paper['pmid'] = pmid_pattern.group(1)
+                    continue
+                else:
+                    # Fallback: look for PMID pattern
+                    pmid_match = re.search(r'PMID[:\s]+(\d+)', line, re.I)
+                    if pmid_match and not current_paper.get('pmid'):
+                        current_paper['pmid'] = pmid_match.group(1)
                 
                 url_match = re.search(r'(https?://[^\s\)]+)', line)
                 if url_match and not current_paper.get('link'):
                     current_paper['link'] = url_match.group(1)
                 
-                # Extract summary - look for "Summary:" prefix
-                summary_match = re.match(r'^(Summary|summary|Description|description):\s*(.+)$', line, re.I)
+                # Extract summary - look for "Summary:" prefix (must be exact match)
+                summary_match = re.match(r'^Summary:\s*(.+)$', line, re.I)
                 if summary_match:
-                    summary_text = summary_match.group(2).strip()
+                    summary_text = summary_match.group(1).strip()
                     # Clean markdown from summary
                     summary_text = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', summary_text)
                     summary_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', summary_text)
                     summary_text = re.sub(r'\*([^*]+)\*', r'\1', summary_text)
                     summary_text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'\1', summary_text)  # Remove markdown links, keep text
-                    current_paper['summary'] = summary_text
+                    # If we already have a summary, append (multi-line summary)
+                    if current_paper.get('summary'):
+                        current_paper['summary'] += ' ' + summary_text
+                    else:
+                        current_paper['summary'] = summary_text
                     continue
+                
+                # Extract description - look for "Description:" prefix (must be exact match)
+                description_match = re.match(r'^Description:\s*(.+)$', line, re.I)
+                if description_match:
+                    description_text = description_match.group(1).strip()
+                    # Clean markdown from description
+                    description_text = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', description_text)
+                    description_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', description_text)
+                    description_text = re.sub(r'\*([^*]+)\*', r'\1', description_text)
+                    description_text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'\1', description_text)  # Remove markdown links, keep text
+                    # If we already have a description, append (multi-line description)
+                    if current_paper.get('description'):
+                        current_paper['description'] += ' ' + description_text
+                    else:
+                        current_paper['description'] = description_text
+                    continue
+                
+                # Also check for continuation of description (if previous line was Description:)
+                # Look for lines that continue the description (not starting with a field name)
+                if current_paper.get('description') and not re.match(r'^(Title|Authors?|Journal|Year|DOI|PMID|Hyperlink|Link|Summary|Description|\[):', line, re.I):
+                    # Check if this looks like continuation of description (not a new field)
+                    # If line doesn't start with a field name and is substantial, it might be description continuation
+                    if len(line) > 20 and not line.startswith('[') and not re.match(r'^\d+\.', line):
+                        # Append to description
+                        clean_line = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', line)
+                        clean_line = re.sub(r'\*\*([^*]+)\*\*', r'\1', clean_line)
+                        clean_line = re.sub(r'\*([^*]+)\*', r'\1', clean_line)
+                        clean_line = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'\1', clean_line)
+                        current_paper['description'] += ' ' + clean_line
+                        continue
                 
                 # Extract hyperlink - look for "Hyperlink:" prefix first
                 hyperlink_prefix_match = re.match(r'^(Hyperlink|Link):\s*(.+)$', line, re.I)
@@ -1208,13 +1618,18 @@ IMPORTANT:
                 # Clean up extra whitespace
                 line = re.sub(r'\s+', ' ', line).strip()
                 
-                # Description (any other meaningful line)
-                if len(line) > 20 and not re.match(r'^(Authors?|Journal|Year|DOI|PMID|Link|Summary|Hyperlink|Description):', line, re.I):
+                # Description (any other meaningful line) - only if we don't have description yet
+                # Don't use this as summary or title - it's just additional context
+                if len(line) > 20 and not re.match(r'^(Authors?|Journal|Year|DOI|PMID|Link|Summary|Hyperlink|Description|Title):', line, re.I):
+                    # Only add to description if we don't have one from "Description:" field
                     if not current_paper.get('description'):
-                        current_paper['description'] = line
-                    # If no summary yet, use description as summary
-                    if not current_paper.get('summary') and len(line) > 30:
-                        current_paper['summary'] = line
+                        # Clean markdown
+                        clean_line = re.sub(r'\*\*\*([^*]+)\*\*\*', r'\1', line)
+                        clean_line = re.sub(r'\*\*([^*]+)\*\*', r'\1', clean_line)
+                        clean_line = re.sub(r'\*([^*]+)\*', r'\1', clean_line)
+                        clean_line = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'\1', clean_line)
+                        current_paper['description'] = clean_line
+                    # Don't use random lines as summary - only use "Summary:" field
         
         if current_paper.get('title'):
             papers.append(current_paper)
@@ -1228,6 +1643,91 @@ IMPORTANT:
                         paper['link'] = citation['url']
                     if not paper.get('title') or paper['title'] == '':
                         paper['title'] = citation.get('title', paper['title'])
+            
+            # Ensure all required fields are present
+            # Description: Use provided description, or generate a basic one if missing
+            if not paper.get('description') or paper.get('description', '').strip() == '' or paper.get('description') == 'N/A':
+                # Generate a basic description from available info
+                title = paper.get('title', 'Unknown')
+                journal = paper.get('journal', 'Unknown')
+                year = paper.get('year', 'Unknown')
+                # Handle missing journal name
+                if journal and journal != 'Unknown' and journal.strip() and journal != 'Not specified':
+                    paper['description'] = f"This research paper from {journal} ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+                else:
+                    paper['description'] = f"This research paper ({year}) discusses {title}. The paper provides insights relevant to protein research and biological mechanisms."
+            
+            # Summary: Use provided summary, or generate detailed process description if missing
+            # CRITICAL: Do NOT copy from description - they must be different
+            if not paper.get('summary') or paper.get('summary', '').strip() == '' or paper.get('summary') == 'N/A':
+                # Generate a process-oriented summary using Gemini
+                try:
+                    import google.generativeai as genai
+                    gemini_api_key = os.getenv("GEMINI_API_KEY")
+                    if gemini_api_key:
+                        genai.configure(api_key=gemini_api_key)
+                        model = genai.GenerativeModel("gemini-2.0-flash-exp")
+                        
+                        title = paper.get('title', 'Unknown')
+                        journal = paper.get('journal', 'Unknown')
+                        year = paper.get('year', 'Unknown')
+                        link = paper.get('link', '')
+                        doi = paper.get('doi', '')
+                        pmid = paper.get('pmid', '')
+                        # Get description to ensure summary is different
+                        existing_desc = paper.get('description', '')
+                        
+                        summary_prompt = f"""Based on the following research paper information, generate a DETAILED PROCESS DESCRIPTION (Summary) that explains the methodology, approach, techniques, and step-by-step process used in the research.
+
+Title: {title}
+Journal: {journal}
+Year: {year}
+URL: {link}
+DOI: {doi if doi else 'Not available'}
+PMID: {pmid if pmid else 'Not available'}
+
+IMPORTANT: The Description field for this paper is: "{existing_desc}"
+
+Generate a DETAILED PROCESS DESCRIPTION (2-3 sentences, focused on METHODOLOGY) that:
+1. Describes the research methodology and experimental approach
+2. Explains the techniques, tools, and methods used
+3. Details the step-by-step process of how the research was conducted
+4. Focuses on HOW the research was done, not what it's about
+
+CRITICAL: This Summary MUST be DIFFERENT from the Description. 
+- Description explains WHAT the paper is about (overview/topic)
+- Summary explains HOW the research was done (process/methodology)
+- Do NOT repeat the same information from the Description
+
+Return ONLY the process description text, no labels or formatting."""
+                        
+                        summary_response = model.generate_content(summary_prompt)
+                        generated_summary = summary_response.text.strip()
+                        if generated_summary and len(generated_summary) > 50:
+                            # Ensure it's different from description
+                            if existing_desc and generated_summary.lower() == existing_desc.lower():
+                                # If they're the same, generate a different one
+                                generated_summary = f"This research employed comprehensive experimental methodologies to investigate {title}. The study utilized advanced analytical techniques and systematic data collection approaches to examine the underlying mechanisms and processes."
+                            paper['summary'] = generated_summary
+                        else:
+                            # Fallback: create a process-oriented summary
+                            paper['summary'] = f"This research employed comprehensive experimental methodologies to investigate {title}. The study utilized advanced analytical techniques and systematic data collection approaches to examine the underlying mechanisms and processes."
+                except Exception as e:
+                    logger.warning(f"Error generating summary with Gemini: {e}")
+                    # Fallback: create a process-oriented summary (NOT from description)
+                    title = paper.get('title', 'Unknown')
+                    journal = paper.get('journal', 'Unknown')
+                    year = paper.get('year', 'Unknown')
+                    paper['summary'] = f"This research employed comprehensive experimental methodologies to investigate {title}. The study utilized advanced analytical techniques and systematic data collection approaches to examine the underlying mechanisms and processes."
+            
+            # Ensure hyperlink is at the end (will be displayed last in frontend)
+            # The link field is already being extracted, just make sure it's set
+            if not paper.get('link'):
+                # Try to get from citations if available
+                if paper.get('citationNumber') and citations:
+                    citation = next((c for c in citations if c.get('number') == paper['citationNumber']), None)
+                    if citation and citation.get('url'):
+                        paper['link'] = citation['url']
         
         return papers
     

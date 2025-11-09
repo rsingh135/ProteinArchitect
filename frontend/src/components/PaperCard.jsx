@@ -73,22 +73,28 @@ export function PaperCard({ paper, number, theme = 'light' }) {
                   {paper.year}
                 </Badge>
               )}
-              {paper.doi && (
+              {(paper.doi || paper.pmid) && (
                 <div className="flex items-center gap-2">
                   <span className={`font-semibold text-base ${
                     theme === 'dark' ? 'text-gray-200' : 'text-slate-700'
                   }`}>DOI/PMID:</span>
                   <span className={`text-base font-mono ${
                     theme === 'dark' ? 'text-gray-300' : 'text-slate-600'
-                  }`}>{paper.doi}</span>
+                  }`}>
+                    {paper.doi && paper.doi.toLowerCase() !== 'not available' && paper.doi.toLowerCase() !== 'n/a' 
+                      ? paper.doi 
+                      : paper.pmid && paper.pmid.toLowerCase() !== 'not available' && paper.pmid.toLowerCase() !== 'n/a'
+                        ? `PMID: ${paper.pmid}`
+                        : 'Not available'}
+                  </span>
                 </div>
               )}
               {paper.citationNumber && (
-                <Badge variant="outline" className={`text-base px-2 py-1 ${
+                <Badge variant="outline" className={`text-base px-2 py-1 cursor-pointer hover:opacity-80 transition-opacity ${
                   theme === 'dark'
                     ? 'bg-gray-700 text-gray-300 border-gray-600'
                     : 'bg-slate-100 text-slate-700 border-slate-300'
-                }`}>
+                }`} title={`Citation number ${paper.citationNumber}`}>
                   Citation [{paper.citationNumber}]
                 </Badge>
               )}
@@ -100,49 +106,53 @@ export function PaperCard({ paper, number, theme = 'light' }) {
               )}
             </div>
             
-            {/* Summary */}
-            {paper.summary && (
-              <div className={`pt-2 border-t ${
-                theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
-              }`}>
-                <div className="flex items-start gap-2 mb-2">
-                  <span className={`font-semibold text-base shrink-0 ${
-                    theme === 'dark' ? 'text-gray-200' : 'text-slate-700'
-                  }`}>Summary:</span>
-                </div>
-                <div className={`text-base leading-relaxed ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-slate-700'
-                }`}>
-                  {renderMarkdownLinks(cleanMarkdown(paper.summary))}
-                </div>
+            {/* Description - always show, even if N/A */}
+            <div className={`pt-2 border-t ${
+              theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
+            }`}>
+              <div className="flex items-start gap-2 mb-2">
+                <span className={`font-semibold text-base shrink-0 ${
+                  theme === 'dark' ? 'text-gray-200' : 'text-slate-700'
+                }`}>Description:</span>
               </div>
-            )}
-            
-            {/* Description */}
-            {paper.description && (
-              <div className={paper.summary ? `pt-2 border-t ${
-                theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
-              }` : ""}>
-                <div className="flex items-start gap-2 mb-2">
-                  <span className={`font-semibold text-base shrink-0 ${
-                    theme === 'dark' ? 'text-gray-200' : 'text-slate-700'
-                  }`}>Description:</span>
-                </div>
-                <div className={`text-base leading-relaxed prose prose-sm max-w-none ${
-                  theme === 'dark' ? 'text-gray-300 prose-invert' : 'text-slate-700'
-                }`}>
+              <div className={`text-base leading-relaxed prose prose-sm max-w-none ${
+                theme === 'dark' ? 'text-gray-300 prose-invert' : 'text-slate-700'
+              }`}>
+                {paper.description && paper.description !== 'N/A' ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {paper.description}
                   </ReactMarkdown>
-                </div>
+                ) : (
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}>N/A</span>
+                )}
               </div>
-            )}
+            </div>
             
-            {/* Hyperlink */}
-            {paper.link && (
-              <div className={`pt-2 border-t ${
-                theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
+            {/* Summary - always show, even if N/A */}
+            <div className={`pt-2 border-t ${
+              theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
+            }`}>
+              <div className="flex items-start gap-2 mb-2">
+                <span className={`font-semibold text-base shrink-0 ${
+                  theme === 'dark' ? 'text-gray-200' : 'text-slate-700'
+                }`}>Summary:</span>
+              </div>
+              <div className={`text-base leading-relaxed ${
+                theme === 'dark' ? 'text-gray-300' : 'text-slate-700'
               }`}>
+                {paper.summary && paper.summary !== 'N/A' ? (
+                  renderMarkdownLinks(cleanMarkdown(paper.summary))
+                ) : (
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}>N/A</span>
+                )}
+              </div>
+            </div>
+            
+            {/* Hyperlink - always at the end */}
+            <div className={`pt-2 border-t ${
+              theme === 'dark' ? 'border-gray-600' : 'border-slate-200'
+            }`}>
+              {paper.link ? (
                 <a
                   href={paper.link}
                   target="_blank"
@@ -159,8 +169,10 @@ export function PaperCard({ paper, number, theme = 'light' }) {
                     theme === 'dark' ? 'text-blue-500' : 'text-blue-500'
                   }`}>({paper.link.length > 60 ? paper.link.substring(0, 60) + '...' : paper.link})</span>
                 </a>
-              </div>
-            )}
+              ) : (
+                <span className={theme === 'dark' ? 'text-gray-400' : 'text-slate-500'}>N/A</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
