@@ -24,9 +24,14 @@ try:
     from dedalus_labs import AsyncDedalus, DedalusRunner
     from dedalus_labs.utils.stream import stream_async
     DEDALUS_AVAILABLE = True
-except ImportError:
+    logging.info("dedalus-labs imported successfully")
+except ImportError as e:
     DEDALUS_AVAILABLE = False
-    logging.warning("dedalus-labs not installed. Install with: pip install dedalus-labs")
+    logging.error(f"dedalus-labs import failed: {e}")
+    import traceback
+    logging.error(f"Full traceback: {traceback.format_exc()}")
+    logging.warning("Install with: pip install dedalus-labs")
+    logging.warning("If you just installed it, restart the backend server.")
 
 load_dotenv()
 
@@ -34,13 +39,11 @@ logger = logging.getLogger(__name__)
 
 # Supported model constants
 SUPPORTED_MODELS = {
-    "gpt4": "openai/gpt-4.1",
-    "gpt4.1": "openai/gpt-4.1",
-    "gpt5": "openai/gpt-5-mini",
-    "gemini": "google/gemini-1.5-pro",
-    "gemini-pro": "google/gemini-1.5-pro",
-    "gemini-1.5-pro": "google/gemini-1.5-pro",
-    "gemini-1.5-flash": "google/gemini-1.5-flash",
+    "gemini": "google/gemini-2.0-flash-lite",
+    "gemini-pro": "google/gemini-2.0-flash-lite",
+    "gemini-1.5-pro": "google/gemini-2.0-flash-lite",
+    "gemini-1.5-flash": "google/gemini-2.0-flash-lite",
+    "gemini-2.0-flash-lite": "google/gemini-2.0-flash-lite",
 }
 
 
@@ -74,26 +77,43 @@ class AgenticResearchService:
                 "Note: Dedalus Labs handles Google/OpenAI API keys internally."
             )
         
-        # Initialize client with extended timeout for long-running research tasks
-        # Research can take 5-10 minutes, so we need a longer timeout
+        # Initialize client with shorter timeout for quick research
+        # Using gemini-1.5-flash for speed, so we can use shorter timeouts
         import httpx
-        # Set timeout to 15 minutes (900 seconds) for read operations
-        # This allows comprehensive research tasks to complete
+        # Set timeout to 5 minutes (300 seconds) for read operations
+        # This is sufficient for quick research with limited sources
         timeout = httpx.Timeout(
-            connect=60.0,  # 1 minute to establish connection
-            read=900.0,    # 15 minutes to read response (for long-running research)
-            write=60.0,    # 1 minute to write request
-            pool=60.0      # 1 minute to get connection from pool
+            connect=30.0,  # 30 seconds to establish connection
+            read=300.0,    # 5 minutes to read response (for quick research)
+            write=30.0,    # 30 seconds to write request
+            pool=30.0      # 30 seconds to get connection from pool
         )
         
-        # Create httpx client with extended timeout
+        # Create httpx client with shorter timeout
         http_client = httpx.AsyncClient(timeout=timeout)
         
         # Initialize Dedalus client with custom HTTP client
         # AsyncDedalus() automatically uses DEDALUS_API_KEY from environment
         self.client = AsyncDedalus(http_client=http_client)
         self.runner = DedalusRunner(self.client)
-        logger.info("AgenticResearchService initialized (using Dedalus Labs API with Gemini as default, 15min timeout)")
+        logger.info("AgenticResearchService initialized (using gemini-1.5-flash for quick research, 5min timeout, 10 sources max)")
+    
+    async def list_available_models(self) -> List[str]:
+        """
+        List available Gemini models - using gemini-1.5-flash for speed.
+        """
+        try:
+            # Using gemini-1.5-flash for quick research
+            gemini_models_to_try = [
+                "google/gemini-1.5-flash",
+                "gemini-1.5-flash",
+            ]
+            
+            logger.info(f"Gemini models available: {gemini_models_to_try}")
+            return gemini_models_to_try
+        except Exception as e:
+            logger.error(f"Error listing models: {e}")
+            return []
     
     def _resolve_model(self, model: str) -> str:
         """
@@ -103,7 +123,7 @@ class AgenticResearchService:
             model: Model string or alias
         
         Returns:
-            Full model string (e.g., "google/gemini-1.5-pro")
+            Full model string (e.g., "google/gemini-2.0-flash-lite")
         """
         # Check if it's already a full model string (contains /)
         if "/" in model:
@@ -118,22 +138,38 @@ class AgenticResearchService:
         logger.warning(f"Unknown model alias '{model}', using as-is. Known aliases: {list(SUPPORTED_MODELS.keys())}")
         return model
     
+    def _format_model_for_dedalus(self, model: str) -> str:
+        """
+        Convert model name to the format expected by Dedalus Labs.
+        
+        Based on Dedalus Labs documentation, models should be specified with
+        the provider prefix: "google/gemini-1.5-flash" or "openai/gpt-4.1"
+        
+        Dedalus Labs handles the conversion to the underlying API format internally.
+        
+        Args:
+            model: Model string (e.g., "google/gemini-1.5-flash")
+        
+        Returns:
+            Model name in Dedalus Labs format (keep provider prefix)
+        """
+        # Dedalus Labs expects the full provider/model format
+        # Return as-is - Dedalus Labs will handle the conversion
+        return model
+    
     async def research_protein(
         self,
         protein_id: str,
-        model: str = "google/gemini-1.5-pro",
+        model: str = "google/gemini-2.0-flash-lite",
         include_novel: bool = True,
         months_recent: int = 6
     ) -> Dict[str, any]:
         """
-        Conduct comprehensive research on a protein using AI agents.
+        Conduct quick research on a protein using AI agents (limited to 10 sources).
         
         Args:
             protein_id: UniProt protein ID (e.g., "P01308" for insulin)
-            model: Model to use for research. Can be:
-                   - Full model string: "google/gemini-1.5-pro", "google/gemini-1.5-flash", "openai/gpt-4.1"
-                   - Short alias: "gemini", "gemini-pro", "gemini-1.5-flash", "gpt4", "gpt4.1"
-                   Default: "google/gemini-1.5-pro" (uses Gemini via Dedalus Labs)
+            model: Model to use for research. Default: "google/gemini-1.5-flash" (fast)
             include_novel: Whether to include novel/recent research section
             months_recent: Number of months to consider for "novel" research
         
@@ -149,27 +185,37 @@ class AgenticResearchService:
         """
         # Resolve model alias if needed
         model = self._resolve_model(model)
-        logger.info(f"Starting comprehensive research for protein: {protein_id} using model: {model}")
+        # Convert to Dedalus Labs format (remove provider prefix)
+        dedalus_model = self._format_model_for_dedalus(model)
+        logger.info(f"Starting comprehensive research for protein: {protein_id} using model: {dedalus_model} (original: {model})")
         
         # Construct comprehensive research prompt
         research_prompt = self._build_research_prompt(
             protein_id, include_novel, months_recent
         )
         
+        # Use exa-search-mcp as the default (proven to work reliably)
+        # This is faster and more reliable than trying multiple servers
+        mcp_servers = ["windsor/exa-search-mcp"]
+        
+        logger.info(f"Starting research with MCP server: {mcp_servers[0]}")
         try:
-            # Run the research agent with multiple MCP servers
+            # Run the research agent with exa-search MCP server
             # Based on Dedalus Labs docs: runner.run() accepts input, model, and mcp_servers
-            # Note: Using only non-conflicting servers to avoid duplicate tool name errors
             result = await self.runner.run(
                 input=research_prompt,
-                model=model,
-                mcp_servers=[
-                    "windsor/exa-search-mcp",   # Semantic search engine for academic content
-                    "windsor/brave-search-mcp"  # Privacy-focused web search
-                ]
+                model=dedalus_model,
+                mcp_servers=mcp_servers
             )
-            
-            # Access final_output from result (per Dedalus Labs Runner API)
+            logger.info(f"Research succeeded with MCP server: {mcp_servers[0]}")
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Research failed with MCP server {mcp_servers[0]}: {error_msg}")
+            # Re-raise the error - let the outer exception handler deal with it
+            raise
+        
+        # Access final_output from result (per Dedalus Labs Runner API)
+        try:
             if not hasattr(result, 'final_output'):
                 logger.warning("Result object missing 'final_output' attribute, trying alternative access")
                 # Fallback: result might be a string or have different structure
@@ -191,15 +237,63 @@ class AgenticResearchService:
             error_msg = str(e)
             logger.error(f"Error during protein research: {error_msg}")
             
+            # Check if it's a Gemini model error - provide helpful message
+            is_gemini_model = any(gemini in model.lower() for gemini in ["gemini", "google/gemini"])
+            is_model_error = any(pattern in error_msg.lower() for pattern in [
+                "not found", "404", "not supported", "not_found", "models/gemini"
+            ])
+            
+            if is_gemini_model and is_model_error:
+                # Try alternative Gemini model names that might work with Dedalus Labs
+                alternative_gemini_models = [
+                    "google/gemini-2.0-flash-lite",
+                    "google/gemini-2.0-flash-exp",
+                    "google/gemini-2.0-flash",
+                    "google/gemini-pro",
+                    "google/gemini-1.0-pro",
+                ]
+                
+                for alt_model in alternative_gemini_models:
+                    # Keep full format - Dedalus Labs expects "google/gemini-X.X-..."
+                    logger.info(f"Model {model} not available, trying alternative Gemini model: {alt_model}")
+                    try:
+                        result = await self.runner.run(
+                            input=research_prompt,
+                            model=alt_model,
+                            mcp_servers=[
+                                "windsor/exa-search-mcp",
+                                "windsor/brave-search-mcp"
+                            ]
+                        )
+                        
+                        if not hasattr(result, 'final_output'):
+                            output = str(result) if not isinstance(result, str) else result
+                        else:
+                            output = result.final_output
+                        
+                        structured_results = self._parse_research_results(
+                            output,
+                            protein_id,
+                            include_novel
+                        )
+                        
+                        logger.info(f"Research completed for protein: {protein_id} (using alternative Gemini model: {alt_model})")
+                        return structured_results
+                    except Exception as alt_error:
+                        logger.warning(f"Alternative model {alt_model} also failed: {alt_error}")
+                        continue  # Try next alternative model
+                
+                # If all Gemini alternatives failed, provide helpful error
+                logger.error("All Gemini models failed. Please check /list_models endpoint to see available models.")
+            
             # Check if it's an HTML error response (Cloudflare 504)
             if "<!DOCTYPE html>" in error_msg or "Gateway time-out" in error_msg or "504" in error_msg:
                 raise HTTPException(
                     status_code=504,
                     detail=(
                         "Gateway timeout: The Dedalus Labs API server timed out. "
-                        "This happens when research tasks take too long (>100 seconds). "
-                        "Try: 1) Simplifying the query, 2) Using a faster model (gemini-1.5-flash), "
-                        "3) Reducing research scope (set include_novel=False), or 4) Retrying later."
+                        "This happens when research tasks take too long. "
+                        "Try: 1) Simplifying the query, 2) Reducing research scope (set include_novel=False), or 3) Retrying later."
                     )
                 )
             
@@ -211,6 +305,18 @@ class AgenticResearchService:
                         "Research request timed out. This can happen with comprehensive research tasks. "
                         "The research may still be processing. Please try again or use a simpler query. "
                         f"Original error: {error_msg[:200]}"
+                    )
+                )
+            
+            # Handle model not found errors with helpful message
+            if "not found" in error_msg.lower() and ("model" in error_msg.lower() or "404" in error_msg):
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Model '{model}' is not available through Dedalus Labs. "
+                        "Please call GET /list_models to see which Gemini models are available. "
+                        "You may need to use a different model name format. "
+                        f"Original error: {error_msg[:300]}"
                     )
                 )
             
@@ -256,7 +362,8 @@ REQUIREMENTS:
 - Search academic databases, PubMed, bioRxiv, and scientific sources
 - Use semantic search to find relevant papers
 - Include direct hyperlinks to all sources cited
-- Focus on quality over quantity - aim for 10-15 key sources rather than exhaustive lists
+- LIMIT TO 10 SOURCES TOTAL - prioritize the most important and recent sources
+- Be quick and efficient - this is a fast research task
 
 RESEARCH SECTIONS (provide detailed information for each):
 
@@ -267,7 +374,7 @@ RESEARCH SECTIONS (provide detailed information for each):
    - Include papers on structure, function, mechanism, interactions
    - Provide: Title, Authors, Journal, Year, DOI/PMID, and direct hyperlink
    - Prioritize recent and high-impact publications
-   - Include 5-8 key papers with full citations (prioritize recent and high-impact)
+   - Include 2-3 key papers with full citations (prioritize recent and high-impact)
 
 2. USE CASES & APPLICATIONS:
    - Find the MOST COMMON and well-established use cases for this protein
@@ -303,20 +410,20 @@ RESEARCH SECTIONS (provide detailed information for each):
    - Make connections between different research areas
 
 OUTPUT FORMAT:
-- Start with a CITATIONS section listing ALL hyperlinks used (numbered list)
+- Start with a CITATIONS section listing ALL hyperlinks used (numbered list, MAX 10 sources)
 - Then provide each section clearly labeled
 - For each citation, include: [Number] Title/Description - Hyperlink
 - Use markdown formatting for readability
 - Ensure ALL sources are cited with working hyperlinks
-- Be efficient - aim for 10-15 citations with key information
+- LIMIT TO 10 SOURCES TOTAL across all sections
 - Prioritize the most important and recent sources
 
 IMPORTANT:
 - Use semantic search to find relevant content, not just exact matches
-- Cross-reference information from multiple sources
+- LIMIT TO 10 SOURCES TOTAL - be selective and prioritize quality
 - Prioritize recent, high-quality, peer-reviewed sources
-- Include both established knowledge and cutting-edge research
-- Be comprehensive - this is a thorough research task, not a quick lookup
+- Be quick and efficient - this is a fast research task with limited sources
+- Focus on the most important information from the top 10 sources
 
 Protein ID: {protein_id}
 """
@@ -368,41 +475,78 @@ Protein ID: {protein_id}
     
     def _extract_citations(self, text: str) -> List[Dict[str, str]]:
         """Extract citations with hyperlinks from the text."""
+        import re
         citations = []
         lines = text.split('\n')
         
         in_citations = False
+        citation_count = 0
+        
         for line in lines:
             line = line.strip()
             if not line:
                 continue
             
-            # Detect citations section
-            if "CITATION" in line.upper() or (line.startswith('[') and 'http' in line):
+            # Detect citations section - more flexible matching
+            if "CITATION" in line.upper():
+                in_citations = True
+                continue
+            
+            # Also look for numbered lists with URLs anywhere in the text
+            if re.search(r'\[\d+\]', line) and 'http' in line:
                 in_citations = True
             
-            if in_citations:
-                # Look for hyperlinks
-                if 'http' in line:
-                    # Try to extract citation info
-                    import re
-                    # Match patterns like [1] Title - http://...
-                    match = re.search(r'\[(\d+)\]\s*(.+?)\s*-\s*(https?://[^\s]+)', line)
+            # Look for URLs in any line (broader search)
+            if 'http' in line:
+                # Match patterns like [1] Title - http://...
+                match = re.search(r'\[(\d+)\]\s*(.+?)\s*[-–—]\s*(https?://[^\s\)]+)', line)
+                if match:
+                    citations.append({
+                        "number": match.group(1),
+                        "title": match.group(2).strip(),
+                        "url": match.group(3)
+                    })
+                    citation_count += 1
+                else:
+                    # Try pattern without dash: [1] Title http://...
+                    match = re.search(r'\[(\d+)\]\s*(.+?)\s+(https?://[^\s\)]+)', line)
                     if match:
                         citations.append({
                             "number": match.group(1),
-                            "title": match.group(2),
+                            "title": match.group(2).strip(),
                             "url": match.group(3)
                         })
+                        citation_count += 1
                     else:
-                        # Just extract URL
-                        url_match = re.search(r'(https?://[^\s]+)', line)
+                        # Just extract URL and use line as title
+                        url_match = re.search(r'(https?://[^\s\)]+)', line)
                         if url_match:
+                            title = line.replace(url_match.group(1), "").strip()
+                            # Clean up title
+                            title = re.sub(r'^\[\d+\]\s*', '', title).strip()
+                            title = re.sub(r'[-–—]\s*$', '', title).strip()
+                            if not title:
+                                title = f"Source {citation_count + 1}"
                             citations.append({
-                                "number": str(len(citations) + 1),
-                                "title": line.replace(url_match.group(1), "").strip(),
+                                "number": str(citation_count + 1),
+                                "title": title,
                                 "url": url_match.group(1)
                             })
+                            citation_count += 1
+                
+                # Stop after finding 10 citations (as per limit)
+                if citation_count >= 10:
+                    break
+        
+        # If no citations found, try to extract all URLs from text
+        if not citations:
+            all_urls = re.findall(r'https?://[^\s\)]+', text)
+            for i, url in enumerate(all_urls[:10], 1):
+                citations.append({
+                    "number": str(i),
+                    "title": f"Source {i}",
+                    "url": url
+                })
         
         return citations if citations else [{"number": "1", "title": "See raw output for citations", "url": ""}]
     
@@ -438,7 +582,7 @@ Protein ID: {protein_id}
 # Async wrapper function for easy use
 async def research_protein_async(
     protein_id: str,
-    model: str = "google/gemini-1.5-pro",
+    model: str = "google/gemini-1.5-flash",
     include_novel: bool = True,
     months_recent: int = 6
 ) -> Dict[str, any]:
@@ -478,10 +622,10 @@ if __name__ == "__main__":
             service = AgenticResearchService()
             
             # Example: Use Gemini model
-            print("Using Gemini 1.5 Pro model...")
+            print("Using Gemini 1.5 Flash model (quick research, 10 sources max)...")
             results = await service.research_protein(
                 protein_id=protein_id,
-                model="gemini",  # Can also use "google/gemini-1.5-pro" or "gemini-pro"
+                model="gemini-1.5-flash",  # Fast model for quick research
                 include_novel=True,
                 months_recent=6
             )

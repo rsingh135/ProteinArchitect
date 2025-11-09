@@ -14,11 +14,11 @@ torch>=2.0.0
 pandas>=2.0.0
 
 # API clients
-openai>=1.3.0
 google-generativeai>=0.3.0
 boto3>=1.29.0
 httpx>=0.25.2
 requests>=2.31.0
+dedalus-labs>=0.0.1
 
 # ML/AI libraries
 fair-esm>=2.0.0

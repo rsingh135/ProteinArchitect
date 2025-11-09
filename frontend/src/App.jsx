@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainLayout from './components/layout/MainLayout';
 import DualViewer from './components/viewer/DualViewer';
 import AnalysisDashboard from './components/analysis/AnalysisDashboard';
 import PPIPrediction from './components/PPIPrediction';
+import ResearchOverview from './components/ResearchOverview';
 import AIChat from './components/chat/AIChat';
-import { Layers, BarChart3, Dna } from 'lucide-react';
+import { Layers, BarChart3, Dna, BookOpen } from 'lucide-react';
+import { useProteinStore } from './store/proteinStore';
 
 function App() {
   const [activeView, setActiveView] = useState('viewer');
+  const setActiveViewInStore = useProteinStore((state) => state.setActiveView);
+
+  // Sync activeView with store
+  useEffect(() => {
+    setActiveViewInStore(activeView);
+  }, [activeView, setActiveViewInStore]);
 
   return (
     <MainLayout>
@@ -48,6 +56,17 @@ function App() {
               <Dna className="w-4 h-4" />
               <span>PPI Prediction</span>
             </button>
+            <button
+              onClick={() => setActiveView('research')}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
+                activeView === 'research'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Research</span>
+            </button>
           </div>
         </div>
 
@@ -56,6 +75,7 @@ function App() {
           {activeView === 'viewer' && <DualViewer />}
           {activeView === 'analysis' && <AnalysisDashboard />}
           {activeView === 'ppi' && <PPIPrediction />}
+          {activeView === 'research' && <ResearchOverview />}
         </div>
       </div>
 

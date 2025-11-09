@@ -40,7 +40,6 @@ def main():
     
     # Check available APIs
     has_gemini = bool(os.getenv("GEMINI_API_KEY"))
-    has_openai = bool(os.getenv("OPENAI_API_KEY"))
     
     # Ask which LLM to use (default to Gemini if available)
     print("\nChoose LLM for query generation:")
@@ -51,24 +50,15 @@ def main():
         print("  1. Google Gemini - Not available (set GEMINI_API_KEY)")
         default_choice = "2"
     
-    if has_openai:
-        print("  2. OpenAI - Available")
-    else:
-        print("  2. OpenAI - Not available (set OPENAI_API_KEY)")
+    print("  2. Local model (BioGPT) - Always available (lower quality)")
     
-    print("  3. Local model (BioGPT) - Always available (lower quality)")
-    
-    llm_choice = input(f"\nEnter choice (1/2/3, default={default_choice}): ").strip() or default_choice
+    llm_choice = input(f"\nEnter choice (1/2, default={default_choice}): ").strip() or default_choice
     
     use_gemini = False
-    use_openai = False
     
     if llm_choice == "1" and has_gemini:
         use_gemini = True
         print("\nUsing Google Gemini for optimal medical/biological query generation...")
-    elif llm_choice == "2" and has_openai:
-        use_openai = True
-        print("\nUsing OpenAI...")
     elif llm_choice == "1" and not has_gemini:
         print("\n[WARNING] Google Gemini not available. Falling back to local model...")
         print("Set GEMINI_API_KEY in .env file to use Gemini")
@@ -101,7 +91,6 @@ def main():
         max_results=max_results,
         top_n=top_n,
         use_gemini=use_gemini,
-        use_openai=use_openai,
         reviewed_only=True
     )
     

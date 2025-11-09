@@ -23,7 +23,14 @@ export const useProteinStore = create((set) => ({
   // UI state
   isChatOpen: true,
   activePanel: 'analysis', // 'analysis' | 'sequence' | 'export'
+  activeView: 'viewer', // 'viewer' | 'analysis' | 'ppi' | 'research'
   isLoading: false,
+
+  // Research state
+  researchQuery: null,
+  researchResults: null,
+  isResearching: false,
+  researchError: null,
 
   // Actions
   setTargetProtein: (protein) => set({ targetProtein: protein }),
@@ -39,7 +46,14 @@ export const useProteinStore = create((set) => ({
   setInterfaceContacts: (contacts) => set({ interfaceContacts: contacts }),
   setIsChatOpen: (open) => set({ isChatOpen: open }),
   setActivePanel: (panel) => set({ activePanel: panel }),
+  setActiveView: (view) => set({ activeView: view }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+
+  // Research actions
+  setResearchQuery: (query) => set({ researchQuery: query }),
+  setResearchResults: (results) => set({ researchResults: results }),
+  setIsResearching: (researching) => set({ isResearching: researching }),
+  setResearchError: (error) => set({ researchError: error }),
 
   // Reset
   reset: () => set({

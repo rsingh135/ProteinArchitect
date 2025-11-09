@@ -3,6 +3,8 @@ import { Search, X, Sparkles, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
 import { ProteinService } from '../../services/proteinService';
 
+const API_URL = 'http://localhost:8000';
+
 const SearchBar = () => {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -10,9 +12,83 @@ const SearchBar = () => {
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
   
-  const { setTargetProtein, setIsLoading, setConfidenceScores } = useProteinStore();
+  const { 
+    setTargetProtein, 
+    setIsLoading, 
+    setConfidenceScores,
+    activeView,
+    setResearchQuery,
+    setResearchResults,
+    setIsResearching,
+    setResearchError,
+    researchQuery,
+    isResearching
+  } = useProteinStore();
 
-  // Perform the actual search
+  // Perform research if on research tab
+  const performResearch = async (searchQuery) => {
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    setIsResearching(true);
+    setError(null);
+    setResearchError(null);
+    setResearchQuery(searchQuery.trim());
+    setResearchResults(null);
+
+    try {
+      // Check if backend is reachable
+      try {
+        const healthCheck = await fetch(`${API_URL}/health`);
+        if (!healthCheck.ok) {
+          throw new Error('Backend server is not responding');
+        }
+      } catch (healthErr) {
+        throw new Error('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000');
+      }
+
+      const response = await fetch(`${API_URL}/research_protein`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          protein_id: searchQuery.trim(),
+          model: 'google/gemini-2.0-flash-lite',
+          include_novel: true,
+          months_recent: 6,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Research failed: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (parseErr) {
+          const text = await response.text().catch(() => '');
+          if (text) errorMessage = text;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      setResearchResults(data);
+      console.log('✅ Research completed successfully');
+    } catch (err) {
+      const errorMessage = err.name === 'TypeError' && err.message.includes('Failed to fetch')
+        ? 'Failed to connect to backend server. Please ensure the backend is running on http://localhost:8000'
+        : err.message;
+      setError(errorMessage);
+      setResearchError(errorMessage);
+      console.error('❌ Research failed:', err);
+    } finally {
+      setIsSearching(false);
+      setIsResearching(false);
+    }
+  };
+
+  // Perform the actual search (for protein structure)
   const performSearch = async (searchQuery) => {
     if (!searchQuery.trim()) return;
 
@@ -59,10 +135,19 @@ const SearchBar = () => {
     }
   };
 
+  // Route search based on active view
+  const handleSearch = async (searchQuery) => {
+    if (activeView === 'research') {
+      await performResearch(searchQuery);
+    } else {
+      await performSearch(searchQuery);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsFocused(false);
-    performSearch(query);
+    handleSearch(query);
   };
 
   const clearSearch = () => {
@@ -79,8 +164,8 @@ const SearchBar = () => {
     setQuery(exampleText);
     setIsFocused(false);
     
-    // Perform search immediately
-    performSearch(exampleText);
+    // Perform search immediately (routes based on active view)
+    handleSearch(exampleText);
   };
 
   const examples = [
@@ -101,7 +186,7 @@ const SearchBar = () => {
             : 'border-gray-300'
         } bg-white`}>
           <div className="absolute left-4 flex items-center pointer-events-none">
-            {isSearching ? (
+            {(isSearching || isResearching) ? (
               <Loader className="w-4 h-4 text-primary-500 animate-spin" />
             ) : (
               <Sparkles className={`w-4 h-4 ${isFocused ? 'text-primary-500' : 'text-gray-400'}`} />
@@ -121,9 +206,11 @@ const SearchBar = () => {
               // Delay hiding to allow click on examples
               setTimeout(() => setIsFocused(false), 200);
             }}
-            placeholder="Search proteins... e.g., 'human insulin' or 'P01308'"
+            placeholder={activeView === 'research' 
+              ? "Search for research... e.g., 'P01308' (UniProt ID)" 
+              : "Search proteins... e.g., 'human insulin' or 'P01308'"}
             className="w-full bg-transparent pl-11 pr-24 py-2.5 text-sm text-gray-900 placeholder-gray-500 outline-none"
-            disabled={isSearching}
+            disabled={isSearching || isResearching}
           />
 
           {query && (
@@ -139,14 +226,26 @@ const SearchBar = () => {
 
           <button
             type="submit"
-            disabled={isSearching || !query.trim()}
+            disabled={isSearching || isResearching || !query.trim()}
             className="absolute right-2 px-4 py-1.5 rounded-md bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Search className="w-4 h-4" />
+            {(isSearching || isResearching) ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
           </button>
         </div>
       </form>
       
+      {/* Loading message for research */}
+      {isResearching && activeView === 'research' && (
+        <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 z-50 flex items-center gap-2">
+          <Loader className="w-4 h-4 animate-spin" />
+          <span>Researching protein... This may take 2-5 minutes. Please wait...</span>
+        </div>
+      )}
+
       {/* Error message */}
       {error && (
         <div className="absolute top-full mt-2 left-0 right-0 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 z-50">
@@ -155,7 +254,7 @@ const SearchBar = () => {
       )}
       
       {/* Search suggestions */}
-      {isFocused && !query && !isSearching && (
+      {isFocused && !query && !isSearching && !isResearching && (
         <div 
           className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50"
           onMouseDown={(e) => {

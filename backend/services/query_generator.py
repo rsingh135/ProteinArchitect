@@ -34,28 +34,21 @@ class UniProtQueryGenerator:
     def __init__(
         self, 
         model_name: str = "microsoft/biogpt", 
-        use_openai: bool = False, 
         use_gemini: bool = False,
         api_key: Optional[str] = None,
-        gemini_model: str = "gemini-1.5-flash"  # Gemini model: "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"
+        gemini_model: str = "gemini-1.5-flash"  # Gemini model: "gemini-1.5-flash", "gemini-1.5-pro"
     ):
         """
         Initialize the query generator.
         
         Args:
             model_name: Hugging Face model name for local LLM
-            use_openai: If True, use OpenAI API instead of local model
             use_gemini: If True, use Google Gemini API instead of local model
-            api_key: API key (OpenAI or Gemini, depending on which is enabled)
-            gemini_model: Gemini model name (default: "gemini-1.5-flash", also supports "gemini-1.5-pro", "gemini-pro")
+            api_key: API key (Gemini, if use_gemini is True)
+            gemini_model: Gemini model name (default: "gemini-1.5-flash", also supports "gemini-1.5-pro")
         """
-        self.use_openai = use_openai
         self.use_gemini = use_gemini
         self.gemini_model = gemini_model
-        
-        # Validate that only one API is used at a time
-        if use_gemini and use_openai:
-            raise ValueError("Cannot use both Gemini and OpenAI. Choose one.")
         
         if use_gemini:
             try:
@@ -78,17 +71,6 @@ class UniProtQueryGenerator:
                 raise ImportError("Google Generative AI package required. Install with: pip install google-generativeai")
             except Exception as e:
                 raise ImportError(f"Gemini API setup failed: {e}")
-        elif use_openai:
-            try:
-                from openai import OpenAI
-                if not api_key:
-                    api_key = os.getenv("OPENAI_API_KEY")
-                if not api_key:
-                    raise ValueError("OpenAI API key required when use_openai=True")
-                self.client = OpenAI(api_key=api_key)
-                logger.info("Using OpenAI API for query generation")
-            except ImportError:
-                raise ImportError("OpenAI package required. Install with: pip install openai")
         else:
             try:
                 import torch
@@ -134,7 +116,7 @@ class UniProtQueryGenerator:
         print(f"[DEBUG] Medical Term Extraction & Query Generation")
         print(f"[DEBUG] =========================================")
         print(f"[DEBUG] Step 1: Extracting medical terms from: '{user_query}'")
-        print(f"[DEBUG] Using LLM: {'Google Gemini' if self.use_gemini else 'OpenAI' if self.use_openai else 'Local (BioGPT)'}")
+        print(f"[DEBUG] Using LLM: {'Google Gemini' if self.use_gemini else 'Local (BioGPT)'}")
         
         # Step 1: Extract medical terms and traits
         medical_terms = self._extract_medical_terms(user_query, max_results, reviewed_only)
@@ -172,8 +154,6 @@ class UniProtQueryGenerator:
         """
         if self.use_gemini:
             return self._extract_medical_terms_gemini(user_query, max_results, reviewed_only)
-        elif self.use_openai:
-            return self._extract_medical_terms_openai(user_query, max_results, reviewed_only)
         else:
             return self._extract_medical_terms_local(user_query, max_results, reviewed_only)
     
@@ -250,68 +230,6 @@ Return the information as JSON."""
                 
         except Exception as e:
             logger.error(f"Error extracting medical terms with Gemini: {e}")
-            return self._fallback_medical_extraction(user_query)
-    
-    def _extract_medical_terms_openai(
-        self,
-        user_query: str,
-        max_results: int,
-        reviewed_only: bool
-    ) -> Dict[str, any]:
-        """Extract medical terms using OpenAI API."""
-        import json
-        
-        system_prompt = """You are a biomedical expert that extracts structured medical and biological information from natural language protein search queries.
-
-Extract the following information and return it as JSON:
-{
-  "organism": "organism name or scientific name (any organism mentioned) or null",
-  "organism_id": "NCBI taxonomy ID if known or null",
-  "keywords": ["thermostable", "membrane", "enzyme", etc.],
-  "traits": ["heat-resistant", "disease-associated", etc.],
-  "enzyme_class": "all" or specific EC number or null,
-  "length_range": {"min": 100, "max": 500} or null,
-  "disease_related": true or false,
-  "medical_context": "brief description"
-}
-
-Extract ANY organism mentioned - use the actual name from the query.
-
-Return ONLY valid JSON."""
-
-        user_message = f"""Extract medical and biological information from: "{user_query}"
-
-Return as JSON."""
-
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.2,
-                max_tokens=300
-            )
-            
-            raw_output = response.choices[0].message.content.strip()
-            print(f"[DEBUG] OpenAI Medical Terms Extraction Raw Output: {raw_output}")
-            
-            # Extract JSON
-            if "```json" in raw_output:
-                raw_output = raw_output.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw_output:
-                raw_output = raw_output.split("```")[1].split("```")[0].strip()
-            
-            try:
-                medical_terms = json.loads(raw_output)
-                print(f"[DEBUG] Parsed medical terms: {json.dumps(medical_terms, indent=2)}")
-                return medical_terms
-            except json.JSONDecodeError:
-                return self._fallback_medical_extraction(user_query)
-                
-        except Exception as e:
-            logger.error(f"Error extracting medical terms with OpenAI: {e}")
             return self._fallback_medical_extraction(user_query)
     
     def _extract_medical_terms_local(
@@ -576,88 +494,6 @@ Context:
             # Fallback to keyword-based query
             return self._fallback_query(user_query, reviewed_only)
     
-    def _openai_query_generation(
-        self,
-        user_query: str,
-        max_results: int,
-        reviewed_only: bool
-    ) -> str:
-        """Generate query using OpenAI API."""
-        system_prompt = """You are a UniProt database query expert. Convert natural language protein search requests into valid UniProt query syntax.
-
-UniProt Query Syntax Guide:
-- reviewed:true - Only manually reviewed proteins
-- length:[X TO Y] - Protein length range
-- organism_id:9606 - Specific organism (9606 = human)
-- keyword:KW-XXXX - Protein keywords (e.g., KW-0809 = thermostable)
-- ec:* - All enzymes
-- ec:1.1.1.1 - Specific enzyme
-- name:protein_name - Search by name
-- gene:gene_name - Search by gene name
-
-Common keywords:
-- KW-0809: Thermostable
-- KW-0472: Membrane protein
-- KW-0329: Signal peptide
-- KW-0044: DNA-binding
-- KW-0135: Enzyme
-
-Examples:
-Input: "Find heat-resistant proteins"
-Output: "keyword:KW-0809 AND reviewed:true"
-
-Input: "Find enzymes that break down proteins"
-Output: "ec:* AND reviewed:true"
-
-Input: "Find membrane proteins between 100 and 500 amino acids"
-Output: "keyword:KW-0472 AND length:[100 TO 500] AND reviewed:true"
-
-Return ONLY the UniProt query string, nothing else."""
-
-        user_message = f"""Convert this natural language request to a UniProt query:
-
-"{user_query}"
-
-Requirements:
-- Maximum results: {max_results}
-- Reviewed only: {reviewed_only}
-- Return only the query string"""
-
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # Using cheaper model for query generation
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.3,  # Lower temperature for more consistent queries
-                max_tokens=200
-            )
-            
-            raw_query = response.choices[0].message.content.strip()
-            print(f"\n[DEBUG] OpenAI LLM Raw Output: {raw_query}")
-            
-            # Clean up the query (remove markdown, quotes, etc.)
-            query = self._clean_query(raw_query)
-            print(f"[DEBUG] After cleaning: {query}")
-            
-            # Add reviewed filter if requested
-            if reviewed_only and "reviewed:" not in query:
-                if "AND" in query or "OR" in query:
-                    query = f"({query}) AND reviewed:true"
-                else:
-                    query = f"{query} AND reviewed:true"
-                print(f"[DEBUG] After reviewed filter: {query}")
-            
-            logger.info(f"Generated UniProt query: {query}")
-            print(f"[DEBUG] Final UniProt Query: {query}")
-            return query
-            
-        except Exception as e:
-            logger.error(f"Error generating query with OpenAI: {e}")
-            # Fallback to simple keyword-based query
-            return self._fallback_query(user_query, reviewed_only)
-    
     def _local_query_generation(
         self,
         user_query: str,
@@ -914,7 +750,6 @@ Query:"""
 def search_proteins_from_natural_language(
     natural_language_query: str,
     size: int = 100,
-    use_openai: bool = False,
     use_gemini: bool = False,
     api_key: Optional[str] = None,
     reviewed_only: bool = True
@@ -925,9 +760,8 @@ def search_proteins_from_natural_language(
     Args:
         natural_language_query: Natural language description
         size: Number of proteins to fetch
-        use_openai: Use OpenAI API for query generation
         use_gemini: Use Google Gemini API for query generation (optimized for medical/biological text)
-        api_key: API key (OpenAI or Gemini, depending on which is enabled)
+        api_key: API key (Gemini, if use_gemini is True)
         reviewed_only: Only search reviewed proteins
     
     Returns:
@@ -937,7 +771,6 @@ def search_proteins_from_natural_language(
     
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
-        use_openai=use_openai, 
         use_gemini=use_gemini,
         api_key=api_key
     )
@@ -960,7 +793,6 @@ def search_and_get_sequence(
     natural_language_query: str,
     max_results: int = 10,
     top_n: int = 5,
-    use_openai: bool = False,
     use_gemini: bool = False,
     api_key: Optional[str] = None,
     reviewed_only: bool = True
@@ -972,9 +804,8 @@ def search_and_get_sequence(
         natural_language_query: Natural language protein search query
         max_results: Maximum number of results to fetch and display (default: 10)
         top_n: Number of top sequences to return (default: 5)
-        use_openai: Use OpenAI API for query generation
         use_gemini: Use Google Gemini API for query generation
-        api_key: API key (OpenAI or Gemini)
+        api_key: API key (Gemini, if use_gemini is True)
         reviewed_only: Only search reviewed proteins
     
     Returns:
@@ -985,7 +816,6 @@ def search_and_get_sequence(
     
     # Generate query from natural language
     query_gen = UniProtQueryGenerator(
-        use_openai=use_openai,
         use_gemini=use_gemini,
         api_key=api_key
     )
@@ -1091,7 +921,7 @@ if __name__ == "__main__":
     print("Example 1: Local LLM Query Generation")
     print("=" * 60)
     
-    query_gen = UniProtQueryGenerator(use_openai=False)
+    query_gen = UniProtQueryGenerator(use_gemini=False)
     
     test_queries = [
         "Find proteins that can survive in extreme heat",
@@ -1113,18 +943,6 @@ if __name__ == "__main__":
         query_gen_gemini = UniProtQueryGenerator(use_gemini=True)
         query = "Find disease-associated proteins involved in cancer"
         uniprot_query = query_gen_gemini.natural_language_to_query(query)
-        print(f"Natural Language: {query}")
-        print(f"UniProt Query: {uniprot_query}")
-    
-    # Example 3: Using OpenAI (if API key available)
-    if os.getenv("OPENAI_API_KEY"):
-        print("\n" + "=" * 60)
-        print("Example 3: OpenAI Query Generation")
-        print("=" * 60)
-        
-        query_gen_openai = UniProtQueryGenerator(use_openai=True)
-        query = "Find heat-resistant proteins from bacteria"
-        uniprot_query = query_gen_openai.natural_language_to_query(query)
         print(f"Natural Language: {query}")
         print(f"UniProt Query: {uniprot_query}")
     
