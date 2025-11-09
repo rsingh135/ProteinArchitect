@@ -237,6 +237,7 @@ const alphafoldProvider = {
       throw error;
     }
   },
+
 };
 
 // ==================== CUSTOM PROVIDER (Placeholder) ====================
@@ -342,6 +343,7 @@ export const ProteinService = {
       return await provider.fetchCIFStructure(proteinData);
     }
   },
+
   
   /**
    * Get confidence color for visualization
