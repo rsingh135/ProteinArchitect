@@ -18,12 +18,12 @@ const VoiceAssistant = ({ protein, selectedResidue, viewerState }) => {
 
   // Determine button state and styling
   const getButtonState = () => {
-    if (error) return { color: 'bg-red-500', text: 'Error', icon: AlertCircle };
-    if (status === 'connecting') return { color: 'bg-yellow-500', text: 'Connecting...', icon: Loader };
-    if (status === 'listening') return { color: 'bg-blue-500', text: 'Listening', icon: Mic };
-    if (status === 'speaking') return { color: 'bg-green-500', text: 'Speaking', icon: Mic };
-    if (isActive) return { color: 'bg-primary-600', text: 'Active', icon: Mic };
-    return { color: 'bg-gray-700', text: 'Ask About This Protein', icon: MicOff };
+    if (error) return { color: 'bg-red-600', textColor: 'text-white', text: 'Error', icon: AlertCircle };
+    if (status === 'connecting') return { color: 'bg-yellow-500', textColor: 'text-gray-900', text: 'Connecting...', icon: Loader };
+    if (status === 'listening') return { color: 'bg-yellow-400', textColor: 'text-gray-900', text: 'Listening', icon: Mic };
+    if (status === 'speaking') return { color: 'bg-green-600', textColor: 'text-white', text: 'Speaking', icon: Mic };
+    if (isActive) return { color: 'bg-yellow-400', textColor: 'text-gray-900', text: 'Listening', icon: Mic };
+    return { color: 'bg-gray-700', textColor: 'text-white', text: 'Ask About This Protein', icon: MicOff };
   };
 
   const buttonState = getButtonState();
@@ -35,14 +35,45 @@ const VoiceAssistant = ({ protein, selectedResidue, viewerState }) => {
       <button
         onClick={toggleConversation}
         disabled={status === 'connecting' || status === 'error'}
-        className={`w-full ${buttonState.color} text-white rounded-lg px-4 py-3 font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 relative overflow-hidden`}
+        className={`w-full ${buttonState.color} ${buttonState.textColor} rounded-lg px-4 py-3 font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 relative overflow-hidden`}
       >
-        {/* Pulse animation when active */}
+        {/* Circular ripple waves when listening */}
         <AnimatePresence>
-          {(status === 'listening' || status === 'speaking') && (
+          {(status === 'listening' || (isActive && status === 'connected')) && (
+            <>
+              {/* Multiple expanding circular waves - blue on yellow */}
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{
+                    opacity: [0.5, 0.2, 0],
+                    scale: [0.7, 1.5, 2]
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: 2.5,
+                    repeat: Infinity,
+                    delay: i * 0.7,
+                    ease: "easeOut"
+                  }}
+                  className="absolute inset-0 rounded-lg border-[3px] border-blue-500"
+                />
+              ))}
+              {/* Center pulsing glow */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0.2, 0.4, 0.2] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="absolute inset-0 bg-blue-500/20 rounded-lg"
+              />
+            </>
+          )}
+          {status === 'speaking' && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.1, 1] }}
+              animate={{ opacity: [0.5, 0.8, 0.5], scale: [1, 1.05, 1] }}
               exit={{ opacity: 0 }}
               transition={{ duration: 1.5, repeat: Infinity }}
               className="absolute inset-0 bg-white/20 rounded-lg"
