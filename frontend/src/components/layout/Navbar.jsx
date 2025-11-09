@@ -1,20 +1,28 @@
 import React from 'react';
-import { Upload, Settings, HelpCircle, MessageCircle } from 'lucide-react';
+import { Upload, Settings, HelpCircle, Sun, Moon } from 'lucide-react';
 import SearchBar from './SearchBar';
-import { useProteinStore } from '../../store/proteinStore';
+import { useThemeStore } from '../../store/themeStore';
 
 const Navbar = () => {
-  const { isChatOpen, setIsChatOpen } = useProteinStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <nav className={`border-b sticky top-0 z-50 shadow-sm transition-colors ${
+      theme === 'dark'
+        ? 'bg-gray-900 border-gray-700'
+        : 'bg-white border-gray-200'
+    }`}>
       <div className="flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <h1 className="text-3xl font-display font-bold text-gray-900 tracking-tight">
+          <h1 className={`text-3xl font-display font-bold tracking-tight ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          }`}>
             ProteinArchitect
           </h1>
-          <span className="text-gray-500 text-base hidden md:block font-medium">
+          <span className={`text-base hidden md:block font-medium ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>
             AI-Powered Molecular Design
           </span>
         </div>
@@ -27,36 +35,53 @@ const Navbar = () => {
         {/* Actions */}
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => setIsChatOpen(!isChatOpen)}
+            onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors ${
-              isChatOpen
-                ? 'bg-blue-500 text-white hover:bg-blue-600'
+              theme === 'dark'
+                ? 'hover:bg-gray-800 text-gray-300'
                 : 'hover:bg-gray-100 text-gray-600'
             }`}
-            title="AI Assistant"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label="Toggle theme"
           >
-            <MessageCircle className="w-5 h-5" />
+            {theme === 'dark' ? (
+              <Sun className="w-5 h-5" />
+            ) : (
+              <Moon className="w-5 h-5" />
+            )}
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'hover:bg-gray-800 text-gray-300'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
             title="Upload Sequence"
           >
-            <Upload className="w-5 h-5 text-gray-600" />
+            <Upload className="w-5 h-5" />
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'hover:bg-gray-800 text-gray-300'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
             title="Help"
           >
-            <HelpCircle className="w-5 h-5 text-gray-600" />
+            <HelpCircle className="w-5 h-5" />
           </button>
 
           <button
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'hover:bg-gray-800 text-gray-300'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
             title="Settings"
           >
-            <Settings className="w-5 h-5 text-gray-600" />
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </div>

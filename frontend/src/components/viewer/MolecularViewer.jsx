@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useThemeStore } from '../../store/themeStore';
 
 const MolecularViewer = ({
   pdbData,
@@ -11,6 +12,7 @@ const MolecularViewer = ({
   onViewerStateChange,
   showOverlays = true, // Control whether to show overlay panels
 }) => {
+  const { theme } = useThemeStore();
   const viewerRef = useRef(null);
   const viewerInstanceRef = useRef(null);
   const modelRef = useRef(null);
@@ -324,6 +326,8 @@ const MolecularViewer = ({
   };
 
   const hasData = !!pdbData;
+  const emptyBgColor = theme === 'dark' ? '#1f2937' : '#f9fafb';
+  const borderColor = theme === 'dark' ? 'border-gray-700' : 'border-gray-200';
 
   return (
     <div
@@ -333,10 +337,10 @@ const MolecularViewer = ({
         position: 'relative',
         borderRadius: '8px',
         overflow: 'hidden',
-        backgroundColor: hasData ? '#1a1a1a' : '#f9fafb',
+        backgroundColor: hasData ? '#1a1a1a' : emptyBgColor,
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
       }}
-      className="border border-gray-200"
+      className={`border ${borderColor}`}
     >
       {hasData ? (
         <>
@@ -357,20 +361,21 @@ const MolecularViewer = ({
                 position: 'absolute',
                 top: '8px',
                 right: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: theme === 'dark' ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.9)',
                 borderRadius: '6px',
                 padding: '6px 8px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
                 fontSize: '10px',
                 zIndex: 10,
                 maxWidth: '140px',
+                border: theme === 'dark' ? '1px solid rgba(75, 85, 99, 0.5)' : 'none',
               }}
             >
-              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: theme === 'dark' ? '#d1d5db' : '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                 Interactions
               </div>
               
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: theme === 'dark' ? '#e5e7eb' : '#1f2937' }}>
                 <input
                   type="checkbox"
                   checked={showDisulfides}
@@ -383,7 +388,7 @@ const MolecularViewer = ({
                 </span>
               </label>
               
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', cursor: 'pointer', fontSize: '11px', color: theme === 'dark' ? '#e5e7eb' : '#1f2937' }}>
                 <input
                   type="checkbox"
                   checked={showHBonds}
@@ -396,7 +401,7 @@ const MolecularViewer = ({
                 </span>
               </label>
               
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '11px', color: theme === 'dark' ? '#e5e7eb' : '#1f2937' }}>
                 <input
                   type="checkbox"
                   checked={showLabels}
@@ -415,26 +420,27 @@ const MolecularViewer = ({
                 position: 'absolute',
                 bottom: '8px',
                 left: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: theme === 'dark' ? 'rgba(31, 41, 55, 0.95)' : 'rgba(255, 255, 255, 0.9)',
                 borderRadius: '6px',
                 padding: '6px 8px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
                 maxWidth: '120px',
                 fontSize: '10px',
                 zIndex: 10,
+                border: theme === 'dark' ? '1px solid rgba(75, 85, 99, 0.5)' : 'none',
               }}
             >
-              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: theme === 'dark' ? '#d1d5db' : '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                 Structure
               </div>
               <div>
-                <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: '2px' }}>Atoms</div>
-                <div style={{ fontWeight: '600', color: '#111827', fontFamily: '"SF Mono", monospace', fontSize: '11px' }}>{structureInfo.totalAtoms}</div>
+                <div style={{ fontSize: '9px', color: theme === 'dark' ? '#9ca3af' : '#6b7280', marginBottom: '2px' }}>Atoms</div>
+                <div style={{ fontWeight: '600', color: theme === 'dark' ? '#f9fafb' : '#111827', fontFamily: '"SF Mono", monospace', fontSize: '11px' }}>{structureInfo.totalAtoms}</div>
               </div>
               {structureInfo.chains > 1 && (
-                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '4px', marginTop: '4px' }}>
-                  <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: '2px' }}>Chains</div>
-                  <div style={{ fontWeight: '600', color: '#111827', fontFamily: '"SF Mono", monospace', fontSize: '10px' }}>
+                <div style={{ borderTop: theme === 'dark' ? '1px solid #4b5563' : '1px solid #e5e7eb', paddingTop: '4px', marginTop: '4px' }}>
+                  <div style={{ fontSize: '9px', color: theme === 'dark' ? '#9ca3af' : '#6b7280', marginBottom: '2px' }}>Chains</div>
+                  <div style={{ fontWeight: '600', color: theme === 'dark' ? '#f9fafb' : '#111827', fontFamily: '"SF Mono", monospace', fontSize: '10px' }}>
                     {structureInfo.chainList.join(', ')}
                   </div>
                 </div>
@@ -501,12 +507,12 @@ const MolecularViewer = ({
             justifyContent: 'center',
           }}
         >
-          <div style={{ textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ textAlign: 'center', color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}>
             <div style={{ fontSize: '48px', marginBottom: '12px', opacity: 0.3 }}>🧬</div>
-            <div style={{ fontSize: '15px', fontWeight: '500', color: '#9ca3af' }}>
+            <div style={{ fontSize: '15px', fontWeight: '500', color: theme === 'dark' ? '#d1d5db' : '#9ca3af' }}>
               No structure loaded
             </div>
-            <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '8px' }}>
+            <div style={{ fontSize: '13px', color: theme === 'dark' ? '#9ca3af' : '#9ca3af', marginTop: '8px' }}>
               Search for a protein to view its 3D structure
             </div>
           </div>

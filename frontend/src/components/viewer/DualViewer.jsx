@@ -9,6 +9,7 @@ import ProteinOverview from '../shared/ProteinOverview';
 import ProteinViewerModal from './ProteinViewerModal';
 import PartnerSearch from './PartnerSearch';
 import { useProteinStore } from '../../store/proteinStore';
+import { useThemeStore } from '../../store/themeStore';
 
 const DualViewer = () => {
   const {
@@ -25,6 +26,7 @@ const DualViewer = () => {
     setInteractionStats: setInteractionStatsInStore,
   } = useProteinStore();
   
+  const { theme } = useThemeStore();
   const [interactionStats, setInteractionStats] = useState(null);
   
   // Sync interaction stats to store for chat context
@@ -49,11 +51,15 @@ const DualViewer = () => {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col p-6 space-y-4 overflow-hidden bg-gray-50">
+      <div className={`flex-1 flex flex-col p-6 space-y-4 overflow-hidden transition-colors ${
+        theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      }`}>
         {/* Top Controls */}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-            <Layers className="w-5 h-5 mr-2 text-gray-700" />
+          <h2 className={`text-xl font-semibold flex items-center ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
+          }`}>
+            <Layers className={`w-5 h-5 mr-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
             3D Structure Viewer
           </h2>
 
@@ -64,6 +70,8 @@ const DualViewer = () => {
               className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-all text-sm font-medium ${
                 syncRotation
                   ? 'bg-primary-600 text-white'
+                  : theme === 'dark'
+                  ? 'bg-gray-800 text-gray-200 border border-gray-700 hover:bg-gray-700'
                   : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -74,7 +82,11 @@ const DualViewer = () => {
             {/* View Mode Toggle */}
             <button
               onClick={toggleViewMode}
-              className="px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 transition-all flex items-center space-x-2 text-gray-700 text-sm font-medium"
+              className={`px-4 py-2 rounded-lg border transition-all flex items-center space-x-2 text-sm font-medium ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200'
+                  : 'bg-white border-gray-300 hover:bg-gray-50 text-gray-700'
+              }`}
             >
               {viewMode === 'split' ? (
                 <Eye className="w-4 h-4" />
@@ -94,28 +106,36 @@ const DualViewer = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
+          className={`flex-1 rounded-lg border shadow-sm p-6 flex flex-col transition-colors ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
         >
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Target Protein</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Target Protein</h3>
+              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 {targetProtein ? (
                   <>
-                    UniProt ID: <span className="font-mono text-primary-600">{targetProtein.uniprotId}</span>
+                    UniProt ID: <span className={`font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-primary-600'}`}>{targetProtein.uniprotId}</span>
                   </>
                 ) : (
-                  <span className="text-gray-400">Search to load a protein</span>
+                  <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}>Search to load a protein</span>
                 )}
               </p>
             </div>
             <button
               onClick={() => setExpandedViewer('target')}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-gray-700 text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600'
+              }`}
               disabled={!targetProtein}
               aria-label="Expand target protein viewer"
             >
-              <Maximize2 className="w-4 h-4 text-gray-600" />
+              <Maximize2 className="w-4 h-4" />
             </button>
           </div>
 
@@ -133,24 +153,36 @@ const DualViewer = () => {
           {/* Stats for Target Protein */}
           {targetProtein && (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Length</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {targetProtein.sequence ? `${targetProtein.sequence.length} aa` : '--- aa'}
                 </div>
               </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Mass</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
-            </div>
-          </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">pLDDT</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+                </div>
+              </div>
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
-            </div>
-            </div>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>
@@ -160,24 +192,28 @@ const DualViewer = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="flex-1 bg-white rounded-lg border border-gray-200 shadow-sm p-6 flex flex-col"
+          className={`flex-1 rounded-lg border shadow-sm p-6 flex flex-col transition-colors ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
         >
           <div className="flex items-center justify-between mb-4">
             <div 
               className="flex-1 cursor-pointer"
               onClick={() => !binderProtein && setIsPartnerSearchOpen(true)}
             >
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {binderProtein ? 'Protein Interaction' : 'Partner/Binder'}
               </h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                 {binderProtein ? (
                   <>
-                    <span className="font-mono text-primary-600">{targetProtein?.uniprotId}</span>
+                    <span className={`font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-primary-600'}`}>{targetProtein?.uniprotId}</span>
                     {' ↔ '}
-                    <span className="font-mono text-purple-600">{binderProtein.uniprotId}</span>
+                    <span className={`font-mono ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>{binderProtein.uniprotId}</span>
                     {' • '}
-                    <span className="text-primary-600 hover:text-primary-700" onClick={(e) => {
+                    <span className={`${theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-primary-600 hover:text-primary-700'}`} onClick={(e) => {
                       e.stopPropagation();
                       setIsPartnerSearchOpen(true);
                     }}>
@@ -185,7 +221,7 @@ const DualViewer = () => {
                     </span>
                   </>
                 ) : (
-                  <span className="text-gray-400">Click to search for a binding partner</span>
+                  <span className={theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}>Click to search for a binding partner</span>
                 )}
               </p>
             </div>
@@ -196,19 +232,27 @@ const DualViewer = () => {
                     setBinderProtein(null);
                     setInteractionStats(null);
                   }}
-                  className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                  className={`p-2 rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'hover:bg-red-900/30 text-red-400'
+                      : 'hover:bg-red-50 text-red-600'
+                  }`}
                   title="Remove partner"
                 >
-                  <X className="w-4 h-4 text-red-600" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
               <button
                 onClick={() => setExpandedViewer('interaction')}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-700 text-gray-300'
+                    : 'hover:bg-gray-100 text-gray-600'
+                }`}
                 disabled={!binderProtein}
                 aria-label="Expand interaction viewer"
               >
-              <Maximize2 className="w-4 h-4 text-gray-600" />
+              <Maximize2 className="w-4 h-4" />
             </button>
             </div>
           </div>
@@ -243,12 +287,16 @@ const DualViewer = () => {
 
             {/* Empty State Overlay */}
                 {!binderProtein && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-50/95 backdrop-blur-sm rounded-lg">
+            <div className={`absolute inset-0 flex items-center justify-center backdrop-blur-sm rounded-lg ${
+              theme === 'dark' ? 'bg-gray-800/95' : 'bg-gray-50/95'
+            }`}>
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Eye className="w-8 h-8 text-gray-400" />
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                }`}>
+                  <Eye className={`w-8 h-8 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`} />
                 </div>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className={`text-sm mb-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
                         Search for a binding partner to visualize interactions
                 </p>
                       <button 
@@ -267,42 +315,66 @@ const DualViewer = () => {
           {/* Stats for Interaction/Partner - 3 stats, symmetrical with left side */}
           {binderProtein && targetProtein && interactionStats ? (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Total Contacts</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Total Contacts</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.totalContacts || 0}
                 </div>
               </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Avg Distance</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Avg Distance</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.averageDistance ? `${interactionStats.averageDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Closest Contact</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Closest Contact</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {interactionStats.minDistance ? `${interactionStats.minDistance.toFixed(2)} Å` : '-- Å'}
                 </div>
               </div>
             </div>
           ) : binderProtein ? (
             <div className="mt-4 grid grid-cols-3 gap-3">
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Length</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Length</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${binderProtein.sequence.length} aa` : '--- aa'}
                 </div>
               </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">Mass</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.sequence ? `${(binderProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
                 </div>
               </div>
-              <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1 text-center">pLDDT</div>
-                <div className="text-sm font-semibold text-gray-900 text-center">
+              <div className={`py-3 px-2 rounded-lg border transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-700/50 border-gray-600'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className={`text-xs mb-1 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>pLDDT</div>
+                <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
                 </div>
             </div>

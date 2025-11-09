@@ -2,10 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useProteinStore } from '../../store/proteinStore';
+import { useThemeStore } from '../../store/themeStore';
 import axios from 'axios';
 
 const AIChat = () => {
   const { targetProtein, binderProtein, interactionStats, isChatOpen, setIsChatOpen } = useProteinStore();
+  const { theme } = useThemeStore();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -115,29 +117,41 @@ const AIChat = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col z-50 max-h-[600px]">
+    <div className={`fixed bottom-20 right-6 w-96 rounded-lg shadow-2xl border flex flex-col z-40 max-h-[600px] ${
+      theme === 'dark'
+        ? 'bg-gray-800 border-gray-700'
+        : 'bg-white border-gray-200'
+    }`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+      <div className={`flex items-center justify-between p-4 border-b rounded-t-lg ${
+        theme === 'dark'
+          ? 'border-gray-700 bg-gray-900'
+          : 'border-gray-200 bg-gray-50'
+      }`}>
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">AI Assistant</h3>
-            <p className="text-xs text-gray-500">Powered by Gemini</p>
+            <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI Assistant</h3>
+            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Powered by Gemini</p>
           </div>
         </div>
         <button
           onClick={() => setIsChatOpen(false)}
-          className="p-1 hover:bg-gray-200 rounded transition-colors"
+          className={`p-1 rounded transition-colors ${
+            theme === 'dark'
+              ? 'hover:bg-gray-700 text-gray-300'
+              : 'hover:bg-gray-200 text-gray-600'
+          }`}
           aria-label="Close chat"
         >
-          <X className="w-5 h-5 text-gray-600" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className={`flex-1 overflow-y-auto p-4 space-y-4 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
         {messages.map((message, index) => (
           <div
             key={index}
@@ -147,6 +161,8 @@ const AIChat = () => {
               className={`max-w-[80%] rounded-lg px-3 py-2 ${
                 message.role === 'user'
                   ? 'bg-blue-500 text-white'
+                  : theme === 'dark'
+                  ? 'bg-gray-700 text-gray-100'
                   : 'bg-gray-100 text-gray-900'
               }`}
             >
@@ -155,22 +171,22 @@ const AIChat = () => {
                   <ReactMarkdown
                     components={{
                       p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                      strong: ({ children }) => <strong className="font-semibold text-gray-900">{children}</strong>,
-                      em: ({ children }) => <em className="italic text-gray-800">{children}</em>,
+                      strong: ({ children }) => <strong className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{children}</strong>,
+                      em: ({ children }) => <em className={`italic ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{children}</em>,
                       ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 ml-2">{children}</ul>,
                       ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 ml-2">{children}</ol>,
                       li: ({ children }) => <li className="ml-1">{children}</li>,
-                      h1: ({ children }) => <h1 className="text-base font-bold mb-2 mt-2 text-gray-900">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-sm font-bold mb-1 mt-2 text-gray-900">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-semibold mb-1 mt-1 text-gray-800">{children}</h3>,
+                      h1: ({ children }) => <h1 className={`text-base font-bold mb-2 mt-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{children}</h1>,
+                      h2: ({ children }) => <h2 className={`text-sm font-bold mb-1 mt-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{children}</h2>,
+                      h3: ({ children }) => <h3 className={`text-sm font-semibold mb-1 mt-1 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>{children}</h3>,
                       code: ({ inline, children }) => 
                         inline ? (
-                          <code className="bg-gray-200 px-1 rounded text-xs font-mono">{children}</code>
+                          <code className={`px-1 rounded text-xs font-mono ${theme === 'dark' ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-900'}`}>{children}</code>
                         ) : (
-                          <code className="block bg-gray-200 px-2 py-1 rounded text-xs font-mono my-1 whitespace-pre-wrap">{children}</code>
+                          <code className={`block px-2 py-1 rounded text-xs font-mono my-1 whitespace-pre-wrap ${theme === 'dark' ? 'bg-gray-600 text-gray-100' : 'bg-gray-200 text-gray-900'}`}>{children}</code>
                         ),
-                      blockquote: ({ children }) => <blockquote className="border-l-4 border-gray-300 pl-3 italic my-2 text-gray-700">{children}</blockquote>,
-                      hr: () => <hr className="my-3 border-gray-300" />,
+                      blockquote: ({ children }) => <blockquote className={`border-l-4 pl-3 italic my-2 ${theme === 'dark' ? 'border-gray-500 text-gray-300' : 'border-gray-300 text-gray-700'}`}>{children}</blockquote>,
+                      hr: () => <hr className={`my-3 ${theme === 'dark' ? 'border-gray-600' : 'border-gray-300'}`} />,
                     }}
                   >
                     {message.content}
@@ -184,11 +200,11 @@ const AIChat = () => {
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg px-3 py-2">
+            <div className={`rounded-lg px-3 py-2 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'}`}>
               <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className={`w-2 h-2 rounded-full animate-bounce ${theme === 'dark' ? 'bg-gray-400' : 'bg-gray-400'}`} style={{ animationDelay: '0ms' }}></div>
+                <div className={`w-2 h-2 rounded-full animate-bounce ${theme === 'dark' ? 'bg-gray-400' : 'bg-gray-400'}`} style={{ animationDelay: '150ms' }}></div>
+                <div className={`w-2 h-2 rounded-full animate-bounce ${theme === 'dark' ? 'bg-gray-400' : 'bg-gray-400'}`} style={{ animationDelay: '300ms' }}></div>
               </div>
             </div>
           </div>
@@ -198,14 +214,18 @@ const AIChat = () => {
 
       {/* Suggested Questions */}
       {messages.length === 1 && (
-        <div className="px-4 pb-2">
-          <p className="text-xs text-gray-600 mb-2">Suggested questions:</p>
+        <div className={`px-4 pb-2 ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+          <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Suggested questions:</p>
           <div className="grid grid-cols-2 gap-2">
             {suggestedQuestions.map((question, index) => (
               <button
                 key={index}
                 onClick={() => handleSuggestedQuestion(question)}
-                className="text-left px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-gray-700"
+                className={`text-left px-3 py-2 text-xs rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
               >
                 {question}
               </button>
@@ -215,7 +235,7 @@ const AIChat = () => {
       )}
 
       {/* Input */}
-      <div className="p-4 border-t border-gray-200">
+      <div className={`p-4 border-t ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'}`}>
         <div className="flex items-center space-x-2">
           <input
             ref={inputRef}
@@ -224,7 +244,11 @@ const AIChat = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask about proteins, structure, or function..."
-            className="flex-1 px-4 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+            className={`flex-1 px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              theme === 'dark'
+                ? 'bg-gray-700 text-white placeholder-gray-400 focus:bg-gray-600'
+                : 'bg-gray-100 text-gray-900 placeholder-gray-500 focus:bg-white'
+            }`}
             disabled={isLoading}
           />
           <button

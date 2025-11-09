@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, Sparkles, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
+import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
 
 const API_URL = 'http://localhost:8000';
@@ -25,6 +26,8 @@ const SearchBar = () => {
     researchQuery,
     isResearching
   } = useProteinStore();
+  
+  const { theme } = useThemeStore();
 
   // Perform research if on research tab (runs in background, non-blocking)
   const performResearch = async (searchQuery) => {
@@ -214,8 +217,10 @@ const SearchBar = () => {
             ? 'border-red-500 ring-2 ring-red-100' 
             : isFocused 
             ? 'border-primary-500 ring-2 ring-primary-100' 
+            : theme === 'dark'
+            ? 'border-gray-600'
             : 'border-gray-300'
-        } bg-white`}>
+        } ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
           <div className="absolute left-4 flex items-center pointer-events-none">
             {(isSearching || isResearching) ? (
               <Loader className="w-4 h-4 text-primary-500 animate-spin" />
@@ -264,7 +269,11 @@ const SearchBar = () => {
             placeholder={activeView === 'research' 
               ? "Enter UniProt ID (e.g., 'P01308') - research starts automatically" 
               : "Search proteins... e.g., 'human insulin' or 'P01308'"}
-            className="w-full bg-transparent pl-11 pr-24 py-2.5 text-base text-gray-900 placeholder-gray-500 outline-none"
+            className={`w-full bg-transparent pl-11 pr-24 py-2.5 text-base outline-none ${
+              theme === 'dark'
+                ? 'text-white placeholder-gray-400'
+                : 'text-gray-900 placeholder-gray-500'
+            }`}
             disabled={isSearching || isResearching}
           />
 
@@ -272,10 +281,14 @@ const SearchBar = () => {
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-14 p-1 rounded-full hover:bg-gray-100"
+              className={`absolute right-14 p-1 rounded-full transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-gray-700 text-gray-400'
+                  : 'hover:bg-gray-100 text-gray-400'
+              }`}
               disabled={isSearching}
             >
-              <X className="w-4 h-4 text-gray-400" />
+              <X className="w-4 h-4" />
             </button>
           )}
 
@@ -311,13 +324,19 @@ const SearchBar = () => {
       {/* Search suggestions */}
       {isFocused && !query && !isSearching && !isResearching && (
         <div 
-          className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50"
+          className={`absolute top-full mt-2 left-0 right-0 rounded-lg shadow-lg p-3 z-50 border ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700'
+              : 'bg-white border-gray-200'
+          }`}
           onMouseDown={(e) => {
             // Prevent input blur when clicking on examples
             e.preventDefault();
           }}
         >
-          <p className="text-sm text-gray-600 mb-2 font-medium">Try these examples:</p>
+          <p className={`text-sm mb-2 font-medium ${
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+          }`}>Try these examples:</p>
           <div className="space-y-1">
             {examples.map((example, i) => (
               <button
@@ -328,10 +347,14 @@ const SearchBar = () => {
                   // Prevent input blur
                   e.preventDefault();
                 }}
-                className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 transition-colors cursor-pointer"
+                className={`w-full text-left px-3 py-2 rounded transition-colors cursor-pointer ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-700'
+                    : 'hover:bg-gray-50'
+                }`}
               >
-                <span className="text-base font-mono text-primary-600">{example.text}</span>
-                <span className="text-sm text-gray-500 ml-2">- {example.desc}</span>
+                <span className={`text-base font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-primary-600'}`}>{example.text}</span>
+                <span className={`text-sm ml-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>- {example.desc}</span>
               </button>
             ))}
           </div>

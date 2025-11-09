@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Search, X, Sparkles, Loader, Eye } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
+import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
 
 const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
@@ -11,6 +12,7 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
   const inputRef = useRef(null);
   
   const { setBinderProtein, setIsLoading } = useProteinStore();
+  const { theme } = useThemeStore();
 
   // Perform the actual search
   const performSearch = async (searchQuery) => {
@@ -94,21 +96,33 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className={`rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-colors ${
+          theme === 'dark'
+            ? 'bg-gray-800 border border-gray-700'
+            : 'bg-white'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className={`sticky top-0 border-b px-6 py-4 flex items-center justify-between z-10 transition-colors ${
+          theme === 'dark'
+            ? 'bg-gray-800 border-gray-700'
+            : 'bg-white border-gray-200'
+        }`}>
           <div>
-            <h2 className="text-xl font-display font-bold text-gray-900">Add Binding Partner</h2>
-            <p className="text-sm text-gray-600 mt-1">Search for a protein to visualize as a binding partner</p>
+            <h2 className={`text-xl font-display font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Add Binding Partner</h2>
+            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Search for a protein to visualize as a binding partner</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className={`p-2 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'hover:bg-gray-700 text-gray-300'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
             aria-label="Close dialog"
           >
-            <X className="w-5 h-5 text-gray-600" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -121,8 +135,10 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
                   ? 'border-red-500 ring-2 ring-red-100' 
                   : isFocused 
                   ? 'border-primary-500 ring-2 ring-primary-100' 
+                  : theme === 'dark'
+                  ? 'border-gray-600'
                   : 'border-gray-300'
-              } bg-white`}>
+              } ${theme === 'dark' ? 'bg-gray-700' : 'bg-white'}`}>
                 <div className="absolute left-4 flex items-center pointer-events-none">
                   {isSearching ? (
                     <Loader className="w-4 h-4 text-primary-500 animate-spin" />
@@ -145,7 +161,11 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
                     setTimeout(() => setIsFocused(false), 200);
                   }}
                   placeholder="Search proteins... e.g., 'human insulin' or 'P01308'"
-                  className="w-full bg-transparent pl-11 pr-24 py-2.5 text-sm text-gray-900 placeholder-gray-500 outline-none"
+                  className={`w-full bg-transparent pl-11 pr-24 py-2.5 text-sm outline-none ${
+                    theme === 'dark'
+                      ? 'text-white placeholder-gray-400'
+                      : 'text-gray-900 placeholder-gray-500'
+                  }`}
                   disabled={isSearching}
                   autoFocus
                 />
@@ -154,10 +174,14 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
                   <button
                     type="button"
                     onClick={clearSearch}
-                    className="absolute right-12 p-1 rounded-full hover:bg-gray-100"
+                    className={`absolute right-12 p-1 rounded-full transition-colors ${
+                      theme === 'dark'
+                        ? 'hover:bg-gray-600 text-gray-400'
+                        : 'hover:bg-gray-100 text-gray-400'
+                    }`}
                     disabled={isSearching}
                   >
-                    <X className="w-4 h-4 text-gray-400" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
 
@@ -181,13 +205,17 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
             {/* Search suggestions */}
             {isFocused && !query && !isSearching && (
               <div 
-                className="absolute top-full mt-2 left-0 right-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50"
+                className={`absolute top-full mt-2 left-0 right-0 border rounded-lg shadow-lg p-3 z-50 transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-gray-800 border-gray-700'
+                    : 'bg-white border-gray-200'
+                }`}
                 onMouseDown={(e) => {
                   // Prevent input blur when clicking on examples
                   e.preventDefault();
                 }}
               >
-                <p className="text-xs text-gray-600 mb-2 font-medium">Try these examples:</p>
+                <p className={`text-xs mb-2 font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Try these examples:</p>
                 <div className="space-y-1">
                   {examples.map((example, i) => (
                     <button
@@ -198,10 +226,14 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
                         // Prevent input blur
                         e.preventDefault();
                       }}
-                      className="w-full text-left px-3 py-2 rounded hover:bg-gray-50 transition-colors cursor-pointer"
+                      className={`w-full text-left px-3 py-2 rounded transition-colors cursor-pointer ${
+                        theme === 'dark'
+                          ? 'hover:bg-gray-700'
+                          : 'hover:bg-gray-50'
+                      }`}
                     >
-                      <span className="text-sm font-mono text-primary-600">{example.text}</span>
-                      <span className="text-xs text-gray-500 ml-2">- {example.desc}</span>
+                      <span className={`text-sm font-mono ${theme === 'dark' ? 'text-blue-400' : 'text-primary-600'}`}>{example.text}</span>
+                      <span className={`text-xs ml-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>- {example.desc}</span>
                     </button>
                   ))}
                 </div>
@@ -210,12 +242,22 @@ const PartnerSearch = ({ isOpen, onClose, onPartnerAdded }) => {
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className={`border rounded-lg p-4 transition-colors ${
+            theme === 'dark'
+              ? 'bg-blue-900/20 border-blue-800/50'
+              : 'bg-blue-50 border-blue-200'
+          }`}>
             <div className="flex items-start space-x-3">
-              <Eye className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Eye className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
+              }`} />
               <div>
-                <h3 className="text-sm font-semibold text-blue-900 mb-1">About Binding Partners</h3>
-                <p className="text-sm text-blue-800">
+                <h3 className={`text-sm font-semibold mb-1 ${
+                  theme === 'dark' ? 'text-blue-300' : 'text-blue-900'
+                }`}>About Binding Partners</h3>
+                <p className={`text-sm ${
+                  theme === 'dark' ? 'text-blue-200' : 'text-blue-800'
+                }`}>
                   Search for a protein that interacts with your target protein. The partner will be displayed 
                   in the right viewer alongside your target protein for comparison and interaction analysis.
                 </p>

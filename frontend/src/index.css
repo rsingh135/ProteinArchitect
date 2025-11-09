@@ -31,6 +31,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: #ffffff;
   color: #1f2937;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.dark body {
+  background: #111827;
+  color: #f9fafb;
 }
 
 /* Custom scrollbar */
@@ -43,13 +49,25 @@ body {
   background: #f3f4f6;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1f2937;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 /* Selection */

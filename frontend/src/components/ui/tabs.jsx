@@ -17,10 +17,11 @@ export function Tabs({ defaultValue, className, children, ...props }) {
 }
 
 export function TabsList({ activeTab, setActiveTab, className, children, ...props }) {
+  // Remove default bg-white to allow className override to work properly
   return (
     <div
       className={cn(
-        "bg-white text-slate-600 inline-flex h-auto w-full items-center justify-center rounded-xl p-1 shadow-sm mb-6",
+        "text-slate-600 inline-flex h-auto w-full items-center justify-center rounded-xl p-1 shadow-sm mb-6",
         className
       )}
       {...props}
@@ -35,17 +36,23 @@ export function TabsList({ activeTab, setActiveTab, className, children, ...prop
   );
 }
 
-export function TabsTrigger({ value, activeTab, setActiveTab, className, children, ...props }) {
+export function TabsTrigger({ value, activeTab, setActiveTab, className, children, theme, ...props }) {
   const isActive = activeTab === value;
+  
+  // Determine if dark mode - prioritize theme prop
+  const isDark = theme === 'dark';
   
   return (
     <button
       onClick={() => setActiveTab(value)}
       className={cn(
         "inline-flex flex-1 items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors",
-        isActive
-          ? "bg-white text-slate-900 border-slate-200 shadow-sm"
-          : "text-slate-600 hover:text-slate-900",
+        // Light mode styles (default)
+        !isDark && isActive && "bg-white text-slate-900 border-slate-200 shadow-sm",
+        !isDark && !isActive && "text-slate-600 hover:text-slate-900",
+        // Dark mode styles
+        isDark && isActive && "bg-gray-700 text-white",
+        isDark && !isActive && "text-gray-300 hover:text-white",
         className
       )}
       {...props}
