@@ -546,7 +546,7 @@ s3.upload_file('embeddings_cache.pkl', 'protein-ppi-models', 'embeddings_cache.p
 
 ---
 
-## Cost Estimate
+## Cost Estimate (optional)
 
 - **ml.g4dn.xlarge**: ~$0.736/hour
 - **Training time**: 2-20 hours
