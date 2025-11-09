@@ -1,4 +1,4 @@
-# 🚀 Quick Render Deployment (Free Backend)
+# 🚀 Quick Render Deployment
 
 Since Railway credits ran out, use **Render** - it's FREE and works the same way!
 
