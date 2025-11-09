@@ -276,7 +276,7 @@ const SearchBar = () => {
             <button
               type="button"
               onClick={clearSearch}
-              className={`absolute right-14 p-1 rounded-full transition-colors ${
+              className={`absolute right-20 p-1 rounded-full transition-colors ${
                 theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-400'
                   : 'hover:bg-gray-100 text-gray-400'
