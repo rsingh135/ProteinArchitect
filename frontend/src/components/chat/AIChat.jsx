@@ -3,6 +3,7 @@ import { X, Send, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
+import { API_ENDPOINTS, getBackendErrorMessage } from '../../config/api';
 import axios from 'axios';
 
 const AIChat = () => {
@@ -82,7 +83,7 @@ const AIChat = () => {
       } : null;
 
       // Call backend chat API
-      const response = await axios.post('/api/chat', {
+      const response = await axios.post(API_ENDPOINTS.chat, {
         message: userMessage,
         target_protein: targetProteinData,
         binder_protein: binderProteinData,
@@ -93,7 +94,17 @@ const AIChat = () => {
       setMessages([...newMessages, { role: 'assistant', content: response.data.response }]);
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to get response. Please check if the backend is running and GEMINI_API_KEY is set.';
+      let errorMessage = 'Failed to get response.';
+      
+      // Check if it's a network/connection error
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Failed to fetch')) {
+        errorMessage = getBackendErrorMessage();
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setMessages([...newMessages, { role: 'assistant', content: `Error: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
