@@ -75,36 +75,46 @@ const InteractionViewerModal = ({
                   <h2 className={`text-xl font-semibold ${
                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>Protein Interaction</h2>
-                  {interactionStats && (() => {
-                    // Calculate confidence (same conservative logic as DualViewer)
-                    const totalContacts = interactionStats.totalContacts || 0;
-                    const avgDistance = interactionStats.averageDistance || 0;
-                    const minDistance = interactionStats.minDistance || 0;
-                    const targetLength = targetProtein.sequence?.length || 100;
-                    const partnerLength = partnerProtein.sequence?.length || 100;
-                    // More conservative estimate
-                    const maxExpectedContacts = Math.min(targetLength, partnerLength) * 0.03;
-                    const contactRatio = Math.min(totalContacts / Math.max(maxExpectedContacts, 1), 2.0);
-                    const contactScore = Math.min(contactRatio * 30, 30);
-                    let distanceScore = 0;
-                    if (minDistance > 0) {
-                      if (minDistance < 3.5) distanceScore = 25;
-                      else if (minDistance < 5.0) distanceScore = 20;
-                      else if (minDistance < 7.0) distanceScore = 12;
-                      else distanceScore = 3;
+                  {(() => {
+                    // Use database confidence if available, otherwise calculate from structural data
+                    let confidence;
+                    if (partnerProtein?.interactionConfidence !== undefined && partnerProtein?.interactionConfidence !== null) {
+                      // Use database confidence (convert from 0-1 to 0-100)
+                      confidence = Math.round(partnerProtein.interactionConfidence * 100);
+                    } else if (interactionStats) {
+                      // Fallback: Calculate from structural data
+                      const totalContacts = interactionStats.totalContacts || 0;
+                      const avgDistance = interactionStats.averageDistance || 0;
+                      const minDistance = interactionStats.minDistance || 0;
+                      const targetLength = targetProtein.sequence?.length || 100;
+                      const partnerLength = partnerProtein.sequence?.length || 100;
+                      // More conservative estimate
+                      const maxExpectedContacts = Math.min(targetLength, partnerLength) * 0.03;
+                      const contactRatio = Math.min(totalContacts / Math.max(maxExpectedContacts, 1), 2.0);
+                      const contactScore = Math.min(contactRatio * 30, 30);
+                      let distanceScore = 0;
+                      if (minDistance > 0) {
+                        if (minDistance < 3.5) distanceScore = 25;
+                        else if (minDistance < 5.0) distanceScore = 20;
+                        else if (minDistance < 7.0) distanceScore = 12;
+                        else distanceScore = 3;
+                      }
+                      let avgDistanceScore = 0;
+                      if (avgDistance > 0 && avgDistance < 6.0) {
+                        avgDistanceScore = 15 * Math.max(0, (1 - (avgDistance - 3.0) / 3.0));
+                        avgDistanceScore = Math.max(0, avgDistanceScore);
+                      }
+                      const baseScore = contactScore + distanceScore + avgDistanceScore;
+                      const scaledScore = baseScore * 0.85;
+                      let bonus = 0;
+                      if (totalContacts > maxExpectedContacts * 1.5 && minDistance < 4.0) {
+                        bonus = Math.min(10, (totalContacts / maxExpectedContacts) * 2);
+                      }
+                      confidence = Math.min(95, Math.round(scaledScore + bonus));
+                    } else {
+                      // No data available yet
+                      return null;
                     }
-                    let avgDistanceScore = 0;
-                    if (avgDistance > 0 && avgDistance < 6.0) {
-                      avgDistanceScore = 15 * Math.max(0, (1 - (avgDistance - 3.0) / 3.0));
-                      avgDistanceScore = Math.max(0, avgDistanceScore);
-                    }
-                    const baseScore = contactScore + distanceScore + avgDistanceScore;
-                    const scaledScore = baseScore * 0.85;
-                    let bonus = 0;
-                    if (totalContacts > maxExpectedContacts * 1.5 && minDistance < 4.0) {
-                      bonus = Math.min(10, (totalContacts / maxExpectedContacts) * 2);
-                    }
-                    const confidence = Math.min(95, Math.round(scaledScore + bonus));
                     
                     return (
                       <span className={`px-3 py-1 rounded-full text-sm font-bold ${

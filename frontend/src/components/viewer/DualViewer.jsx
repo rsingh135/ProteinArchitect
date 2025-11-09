@@ -33,8 +33,17 @@ const DualViewer = () => {
   };
 
   // Calculate interaction confidence score (0-100)
-  // More conservative scoring - top interactions should be around 85-95%
+  // Priority: Use database confidence if available, otherwise calculate from structural data
   const calculateInteractionConfidence = (stats, targetProtein, binderProtein) => {
+    // If database confidence is available, use it directly (from interaction service)
+    // This is the primary source and should match what's shown in the right panel
+    if (binderProtein?.interactionConfidence !== undefined && binderProtein?.interactionConfidence !== null) {
+      // Convert to percentage (database confidence is typically 0-1)
+      const dbConfidence = binderProtein.interactionConfidence;
+      return Math.round(dbConfidence * 100);
+    }
+    
+    // Fallback: Calculate from structural data if database confidence is not available
     if (!stats || !targetProtein || !binderProtein) return null;
     
     const totalContacts = stats.totalContacts || 0;
@@ -90,7 +99,13 @@ const DualViewer = () => {
     return Math.max(0, confidence); // Ensure non-negative
   };
 
+  // Calculate confidence - will use database confidence if available, otherwise calculate from stats
   const interactionConfidence = calculateInteractionConfidence(interactionStats, targetProtein, binderProtein);
+  
+  // For immediate display, prefer database confidence if available
+  const displayedConfidence = binderProtein?.interactionConfidence !== undefined && binderProtein?.interactionConfidence !== null
+    ? Math.round(binderProtein.interactionConfidence * 100)
+    : interactionConfidence;
 
   const [leftViewer, setLeftViewer] = useState(null);
   const [rightViewer, setRightViewer] = useState(null);
@@ -228,13 +243,13 @@ const DualViewer = () => {
                 <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein ? 'Protein Interaction' : 'Partner/Binder'}
                 </h3>
-                {binderProtein && interactionConfidence !== null && (
+                {binderProtein && displayedConfidence !== null && displayedConfidence !== undefined && (
                   <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                    interactionConfidence >= 70
+                    displayedConfidence >= 70
                       ? theme === 'dark'
                         ? 'bg-blue-900/40 text-blue-300 border border-blue-700'
                         : 'bg-blue-100 text-blue-700 border border-blue-300'
-                      : interactionConfidence >= 50
+                      : displayedConfidence >= 50
                       ? theme === 'dark'
                         ? 'bg-yellow-900/40 text-yellow-300 border border-yellow-700'
                         : 'bg-yellow-100 text-yellow-700 border border-yellow-300'
@@ -242,7 +257,7 @@ const DualViewer = () => {
                       ? 'bg-red-900/40 text-red-300 border border-red-700'
                       : 'bg-red-100 text-red-700 border border-red-300'
                   }`}>
-                    {interactionConfidence}% Confidence
+                    {displayedConfidence}% Confidence
                   </span>
                 )}
               </div>

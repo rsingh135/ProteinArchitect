@@ -97,13 +97,13 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
   }, [targetProtein?.uniprotId, showPPISuggestions]);
   
   // Handle adding a partner protein
-  const handleAddPartner = async (partnerId) => {
+  const handleAddPartner = async (partnerId, interactionConfidence = null) => {
     if (!partnerId) return;
 
     setIsLoadingInteractions(true);
     
     try {
-      console.log('🔍 Adding partner protein:', partnerId);
+      console.log('🔍 Adding partner protein:', partnerId, 'with confidence:', interactionConfidence);
       
       // Search for the partner protein
       const partnerData = await ProteinService.searchProtein(partnerId);
@@ -113,13 +113,14 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
       const pdbData = await ProteinService.fetchStructure(partnerData, 'pdb');
       console.log('✅ Partner PDB structure loaded');
       
-      // Update store with binder protein data
+      // Update store with binder protein data, including interaction confidence
       setBinderProtein({
         ...partnerData,
         pdbData,
+        interactionConfidence: interactionConfidence !== null ? interactionConfidence : undefined, // Store database confidence
       });
       
-      console.log('✅ Partner added successfully:', partnerData.name);
+      console.log('✅ Partner added successfully:', partnerData.name, 'with confidence:', interactionConfidence);
     } catch (error) {
       console.error('❌ Error adding partner:', error);
       alert(`Failed to load partner protein: ${error.message}\n\nTry using a UniProt ID like 'P01308' (human insulin)`);
@@ -287,7 +288,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                 {ppiSuggestions.map((ppi, index) => (
                   <button
                     key={index}
-                    onClick={() => handleAddPartner(ppi.id)}
+                    onClick={() => handleAddPartner(ppi.id, ppi.confidence)}
                     className={`w-full text-left p-3 rounded-lg border backdrop-blur-sm transition-all duration-200 group hover:scale-[1.02] ${
                       theme === 'dark'
                         ? 'border-gray-700/50 hover:border-blue-600/70 hover:bg-gray-700/60 shadow-md'
