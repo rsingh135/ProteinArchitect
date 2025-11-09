@@ -9,6 +9,8 @@ import { PaperCard } from './PaperCard';
 import { ReferenceCard } from './ReferenceCard';
 import RainbowSpinner from './ui/RainbowSpinner';
 import { cleanMarkdown, renderMarkdownLinks } from '../utils/markdownParser.jsx';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const ResearchOverview = () => {
   const { 
@@ -333,24 +335,35 @@ const ResearchOverview = () => {
               </CardHeader>
               <CardContent>
                 <div className="bg-white/80 backdrop-blur rounded-lg p-6 border border-slate-200">
-                  <p className="text-slate-700 leading-relaxed mb-6 text-base">
-                    {researchResults.summary && researchResults.summary !== 'No summary section found' 
-                      ? researchResults.summary.substring(0, 500) + (researchResults.summary.length > 500 ? '...' : '')
-                      : 'Summary information will be displayed here once research is complete.'}
-                  </p>
+                  <div className="text-slate-700 leading-relaxed mb-6 text-base prose prose-sm max-w-none">
+                    {researchResults.summary && researchResults.summary !== 'No summary section found' ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {researchResults.summary.substring(0, 500) + (researchResults.summary.length > 500 ? '...' : '')}
+                      </ReactMarkdown>
+                    ) : (
+                      <p>Summary information will be displayed here once research is complete.</p>
+                    )}
+                  </div>
                   
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="bg-white border border-slate-200 rounded-lg p-4">
                       <h3 className="text-slate-900 mb-2 font-medium text-base">Key Findings</h3>
-                      <ul className="space-y-1 text-slate-600 text-base">
+                      <div className="space-y-1 text-slate-600 text-base prose prose-sm max-w-none">
                         {extractSummaryData.keyFindings.length > 0 ? (
-                          extractSummaryData.keyFindings.map((finding, idx) => (
-                            <li key={idx}>• {finding.substring(0, 60)}{finding.length > 60 ? '...' : ''}</li>
-                          ))
+                          extractSummaryData.keyFindings.map((finding, idx) => {
+                            const content = finding.substring(0, 60) + (finding.length > 60 ? '...' : '');
+                            return (
+                              <div key={idx}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {`• ${content}`}
+                                </ReactMarkdown>
+                              </div>
+                            );
+                          })
                         ) : (
-                          <li>• Analysis in progress</li>
+                          <p>• Analysis in progress</p>
                         )}
-                      </ul>
+                      </div>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-lg p-4">
                       <h3 className="text-slate-900 mb-2 font-medium text-base">Research Status</h3>
@@ -363,18 +376,25 @@ const ResearchOverview = () => {
                     </div>
                     <div className="bg-white border border-slate-200 rounded-lg p-4">
                       <h3 className="text-slate-900 mb-2 font-medium text-base">Applications</h3>
-                      <ul className="space-y-1 text-slate-600 text-base">
+                      <div className="space-y-1 text-slate-600 text-base prose prose-sm max-w-none">
                         {extractSummaryData.applications.length > 0 ? (
-                          extractSummaryData.applications.map((app, idx) => (
-                            <li key={idx}>• {app.substring(0, 60)}{app.length > 60 ? '...' : ''}</li>
-                          ))
+                          extractSummaryData.applications.map((app, idx) => {
+                            const content = app.substring(0, 60) + (app.length > 60 ? '...' : '');
+                            return (
+                              <div key={idx}>
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                  {`• ${content}`}
+                                </ReactMarkdown>
+                              </div>
+                            );
+                          })
                         ) : (
                           <>
-                            <li>• {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' ? 'Use cases identified' : 'Further research needed'}</li>
-                            <li>• {researchResults.drug_development && researchResults.drug_development !== 'No drug development section found' ? 'Therapeutic potential' : 'No drugs identified yet'}</li>
+                            <p>• {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' ? 'Use cases identified' : 'Further research needed'}</p>
+                            <p>• {researchResults.drug_development && researchResults.drug_development !== 'No drug development section found' ? 'Therapeutic potential' : 'No drugs identified yet'}</p>
                           </>
                         )}
-                      </ul>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -439,10 +459,10 @@ const ResearchOverview = () => {
                       {researchResults.use_cases && researchResults.use_cases !== 'No use cases section found' ? (
                         <>
                           <div className="bg-white border border-slate-200 rounded-lg p-4">
-                            <div className="prose prose-sm max-w-none">
-                              <pre className="whitespace-pre-wrap text-slate-700 font-sans text-sm leading-relaxed">
+                            <div className="prose prose-sm max-w-none text-slate-700">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                 {researchResults.use_cases}
-                              </pre>
+                              </ReactMarkdown>
                             </div>
                           </div>
                         </>
