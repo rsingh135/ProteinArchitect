@@ -14,11 +14,13 @@
     "@tanstack/react-query": "^5.90.7",
     "3dmol": "^2.5.3",
     "axios": "^1.6.2",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.23.24",
     "lucide-react": "^0.553.0",
     "molstar": "^3.15.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tailwind-merge": "^3.3.1",
     "three": "^0.158.0",
     "zustand": "^5.0.8"
   },
