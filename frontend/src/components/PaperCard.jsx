@@ -2,6 +2,8 @@ import React from 'react';
 import { Badge } from './ui/badge';
 import { ExternalLink, Sparkles } from 'lucide-react';
 import { cleanMarkdown, renderMarkdownLinks } from '../utils/markdownParser.jsx';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export function PaperCard({ paper, number }) {
   const isRecent = paper.year && parseInt(paper.year) >= new Date().getFullYear() - 2;
@@ -77,11 +79,10 @@ export function PaperCard({ paper, number }) {
             {/* Description */}
             {paper.description && (
               <div className={paper.summary ? "pt-2 border-t border-slate-200" : ""}>
-                <div className="flex items-start gap-2 mb-2">
-                  <span className="text-slate-700 font-semibold text-base shrink-0">Description:</span>
-                </div>
-                <div className="text-slate-700 text-base leading-relaxed">
-                  {renderMarkdownLinks(cleanMarkdown(paper.description))}
+                <div className="text-slate-700 text-base leading-relaxed prose prose-sm max-w-none">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {paper.description}
+                  </ReactMarkdown>
                 </div>
               </div>
             )}

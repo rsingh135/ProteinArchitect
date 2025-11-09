@@ -546,7 +546,11 @@ const ResearchOverview = () => {
                               <li key={citation.number} className="flex gap-3">
                                 <span className="text-slate-500 shrink-0">[{citation.number}]</span>
                                 <div className="flex-1">
-                                  <p className="text-slate-700">{citation.title}</p>
+                                  <div className="text-slate-700 prose prose-sm max-w-none">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                      {citation.title}
+                                    </ReactMarkdown>
+                                  </div>
                                   {citation.url && (
                                     <a
                                       href={citation.url}
