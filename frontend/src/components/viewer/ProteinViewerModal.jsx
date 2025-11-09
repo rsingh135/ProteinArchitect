@@ -143,13 +143,13 @@ const ProteinViewerModal = ({
                   <div>
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Properties</h3>
                     <div className="space-y-2">
-                      <div className="p-3 rounded-lg bg-white border border-gray-200">
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                         <div className="text-xs text-gray-600 mb-1">Length</div>
                         <div className="text-lg font-semibold text-gray-900">
                           {protein.sequence ? `${protein.sequence.length} aa` : 'N/A'}
                         </div>
                       </div>
-                      <div className="p-3 rounded-lg bg-white border border-gray-200">
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                         <div className="text-xs text-gray-600 mb-1">Molecular Mass</div>
                         <div className="text-lg font-semibold text-gray-900">
                           {protein.sequence
@@ -157,12 +157,9 @@ const ProteinViewerModal = ({
                             : 'N/A'}
                         </div>
                       </div>
-                      <div className="p-3 rounded-lg bg-white border border-gray-200">
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                         <div className="text-xs text-gray-600 mb-1">pLDDT Score</div>
-                        <div className={`text-lg font-semibold ${
-                          protein.metrics && protein.metrics.plddt >= 70 ? 'text-green-600' :
-                          protein.metrics && protein.metrics.plddt >= 50 ? 'text-yellow-600' : 'text-gray-400'
-                        }`}>
+                        <div className="text-lg font-semibold text-gray-900">
                           {protein.metrics ? protein.metrics.plddt.toFixed(1) : 'N/A'}
                         </div>
                       </div>
