@@ -40,16 +40,33 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
             .replace(/^This protein\s+/i, '')
             .trim();
           
-          // Truncate if too long, ensuring it ends properly
-          if (firstSentence.length > 120) {
-            const truncated = firstSentence.substring(0, 117);
-            // Try to end at a word boundary
+          // Truncate if too long, ensuring it ends properly with a period
+          // Max length: ~68 characters (length of "Multifunctional transcription factor that induces cell cycle arrest")
+          const maxLength = 68;
+          if (firstSentence.length > maxLength) {
+            const truncated = firstSentence.substring(0, maxLength);
+            // Try to end at a word boundary (within last 15 characters)
             const lastSpace = truncated.lastIndexOf(' ');
-            setProteinFunction(lastSpace > 80 
-              ? truncated.substring(0, lastSpace) + '...' 
-              : truncated + '...');
+            let finalText;
+            if (lastSpace > maxLength - 15 && lastSpace < maxLength) {
+              finalText = truncated.substring(0, lastSpace);
+            } else {
+              // If no good word boundary, truncate at maxLength
+              finalText = truncated;
+            }
+            // Ensure it ends with a period (remove any trailing punctuation and add period)
+            finalText = finalText.replace(/[.,;:!?]+$/, '').trim();
+            if (finalText && !finalText.endsWith('.')) {
+              finalText += '.';
+            }
+            setProteinFunction(finalText);
           } else {
-            setProteinFunction(firstSentence);
+            // Ensure existing sentence ends with a period
+            let finalText = firstSentence.trim();
+            if (finalText && !finalText.match(/[.!?]$/)) {
+              finalText += '.';
+            }
+            setProteinFunction(finalText);
           }
         } else {
           setProteinFunction('');

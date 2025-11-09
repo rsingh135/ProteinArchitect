@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MolecularDynamicsSimulation } from '../../utils/molecularDynamics';
+import { useThemeStore } from '../../store/themeStore';
 
 const InteractionViewer = ({
   targetPdbData,
@@ -38,6 +39,9 @@ const InteractionViewer = ({
   // Store previous PDB data to detect changes
   const prevTargetPdbRef = useRef(null);
   const prevPartnerPdbRef = useRef(null);
+
+  // Get theme for dark mode support
+  const { theme } = useThemeStore();
 
   useEffect(() => {
     if (!targetPdbData || !partnerPdbData || !viewerRef.current) return;
@@ -764,7 +768,9 @@ const InteractionViewer = ({
         backgroundColor: hasData ? '#1a1a1a' : '#f9fafb',
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
       }}
-      className="border border-gray-200"
+      className={`border transition-colors ${
+        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+      }`}
     >
       {hasData ? (
         <>
@@ -787,7 +793,12 @@ const InteractionViewer = ({
                 position: 'absolute',
                 top: '8px',
                 right: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                backgroundColor: theme === 'dark' 
+                  ? 'rgba(31, 41, 55, 0.95)' // gray-800 with opacity
+                  : 'rgba(255, 255, 255, 0.95)',
+                border: theme === 'dark' 
+                  ? '1px solid rgba(75, 85, 99, 0.5)' // gray-600 border
+                  : 'none',
                 borderRadius: '8px',
                 padding: '10px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
@@ -796,11 +807,25 @@ const InteractionViewer = ({
                 minWidth: '180px',
               }}
             >
-              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '8px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+              <div style={{ 
+                fontSize: '9px', 
+                fontWeight: '600', 
+                marginBottom: '8px', 
+                color: theme === 'dark' ? '#d1d5db' : '#374151', 
+                letterSpacing: '0.3px', 
+                textTransform: 'uppercase' 
+              }}>
                 Interactions
               </div>
               
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '6px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '6px', 
+                cursor: 'pointer', 
+                fontSize: '11px', 
+                color: theme === 'dark' ? '#e5e7eb' : '#1f2937' 
+              }}>
                 <input
                   type="checkbox"
                   checked={showInteractions}
@@ -810,7 +835,14 @@ const InteractionViewer = ({
                 <span>Show Contacts</span>
               </label>
               
-              <label style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', cursor: 'pointer', fontSize: '11px', color: '#1f2937' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                marginBottom: '8px', 
+                cursor: 'pointer', 
+                fontSize: '11px', 
+                color: theme === 'dark' ? '#e5e7eb' : '#1f2937' 
+              }}>
                 <input
                   type="checkbox"
                   checked={showLabels}
@@ -822,8 +854,21 @@ const InteractionViewer = ({
               
               {/* MD Simulation Status */}
               {isSimulationRunning && (
-                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '4px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                <div style={{ 
+                  marginTop: '10px', 
+                  paddingTop: '10px', 
+                  borderTop: theme === 'dark' 
+                    ? '1px solid rgba(75, 85, 99, 0.5)' 
+                    : '1px solid #e5e7eb' 
+                }}>
+                  <div style={{ 
+                    fontSize: '9px', 
+                    fontWeight: '600', 
+                    marginBottom: '4px', 
+                    color: theme === 'dark' ? '#d1d5db' : '#374151', 
+                    letterSpacing: '0.3px', 
+                    textTransform: 'uppercase' 
+                  }}>
                     Dynamics
                   </div>
                   <div style={{ fontSize: '9px', color: '#10b981', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -871,7 +916,12 @@ const InteractionViewer = ({
                 position: 'absolute',
                 top: '8px',
                 left: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                backgroundColor: theme === 'dark' 
+                  ? 'rgba(31, 41, 55, 0.95)' // gray-800 with opacity
+                  : 'rgba(255, 255, 255, 0.9)',
+                border: theme === 'dark' 
+                  ? '1px solid rgba(75, 85, 99, 0.5)' // gray-600 border
+                  : 'none',
                 borderRadius: '6px',
                 padding: '8px 10px',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
@@ -879,16 +929,23 @@ const InteractionViewer = ({
                 zIndex: 10,
               }}
             >
-              <div style={{ fontSize: '9px', fontWeight: '600', marginBottom: '6px', color: '#374151', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+              <div style={{ 
+                fontSize: '9px', 
+                fontWeight: '600', 
+                marginBottom: '6px', 
+                color: theme === 'dark' ? '#d1d5db' : '#374151', 
+                letterSpacing: '0.3px', 
+                textTransform: 'uppercase' 
+              }}>
                 Proteins
               </div>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
                 <div style={{ width: '12px', height: '12px', backgroundColor: '#4A90E2', borderRadius: '2px', marginRight: '6px' }}></div>
-                <span style={{ fontSize: '10px', color: '#1f2937' }}>Target</span>
+                <span style={{ fontSize: '10px', color: theme === 'dark' ? '#e5e7eb' : '#1f2937' }}>Target</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{ width: '12px', height: '12px', backgroundColor: '#9333EA', borderRadius: '2px', marginRight: '6px' }}></div>
-                <span style={{ fontSize: '10px', color: '#1f2937' }}>Partner</span>
+                <span style={{ fontSize: '10px', color: theme === 'dark' ? '#e5e7eb' : '#1f2937' }}>Partner</span>
               </div>
             </div>
           )}

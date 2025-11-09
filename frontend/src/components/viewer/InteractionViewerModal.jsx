@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import InteractionViewer from './InteractionViewer';
 import InteractionStats from './InteractionStats';
+import { useThemeStore } from '../../store/themeStore';
 
 const InteractionViewerModal = ({
   isOpen,
@@ -14,6 +15,8 @@ const InteractionViewerModal = ({
   renderStyle = 'cartoon',
   onInteractionStatsCalculated,
 }) => {
+  const { theme } = useThemeStore();
+  
   // Handle ESC key to close
   useEffect(() => {
     const handleEscape = (e) => {
@@ -54,25 +57,45 @@ const InteractionViewerModal = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-[90vw] h-[90vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden"
+            className={`relative w-[90vw] h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden transition-colors ${
+              theme === 'dark'
+                ? 'bg-gray-800 border border-gray-700'
+                : 'bg-white'
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className={`flex items-center justify-between px-6 py-4 border-b transition-colors ${
+              theme === 'dark'
+                ? 'border-gray-700 bg-gray-900'
+                : 'border-gray-200 bg-gray-50'
+            }`}>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Protein Interaction</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-mono text-primary-600">{targetProtein.uniprotId}</span>
+                <h2 className={`text-xl font-semibold ${
+                  theme === 'dark' ? 'text-white' : 'text-gray-900'
+                }`}>Protein Interaction</h2>
+                <p className={`text-sm mt-1 ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
+                  <span className={`font-mono ${
+                    theme === 'dark' ? 'text-blue-400' : 'text-primary-600'
+                  }`}>{targetProtein.uniprotId}</span>
                   {' ↔ '}
-                  <span className="font-mono text-green-600">{partnerProtein.uniprotId}</span>
+                  <span className={`font-mono ${
+                    theme === 'dark' ? 'text-purple-400' : 'text-green-600'
+                  }`}>{partnerProtein.uniprotId}</span>
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                className={`p-2 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-gray-700 text-gray-300'
+                    : 'hover:bg-gray-200 text-gray-600'
+                }`}
                 aria-label="Close modal"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -95,7 +118,11 @@ const InteractionViewerModal = ({
               </div>
 
               {/* Side Panel */}
-              <div className="w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto">
+              <div className={`w-96 border-l overflow-y-auto transition-colors ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700'
+                  : 'bg-gray-50 border-gray-200'
+              }`}>
                 <div className="p-6">
                   {interactionStats ? (
                     <InteractionStats
@@ -104,8 +131,12 @@ const InteractionViewerModal = ({
                       partnerProtein={partnerProtein}
                     />
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                    <div className={`text-center py-8 ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4 ${
+                        theme === 'dark' ? 'border-blue-400' : 'border-primary-600'
+                      }`}></div>
                       <p>Calculating interactions...</p>
                     </div>
                   )}

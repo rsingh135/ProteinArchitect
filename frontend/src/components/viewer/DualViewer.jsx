@@ -340,7 +340,7 @@ const DualViewer = () => {
                 <div className={`text-sm font-semibold text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
                 </div>
-            </div>
+              </div>
             </div>
           ) : null}
         </motion.div>
