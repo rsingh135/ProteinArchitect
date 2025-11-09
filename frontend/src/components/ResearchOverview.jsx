@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FileText, Beaker, BookOpen, ExternalLink, CheckCircle2, Loader2, AlertCircle, FlaskConical } from 'lucide-react';
+import { FileText, Beaker, BookOpen, ExternalLink, CheckCircle2, Loader2, AlertCircle, FlaskConical, X } from 'lucide-react';
 import { useProteinStore } from '../store/proteinStore';
 import { useThemeStore } from '../store/themeStore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -18,7 +18,8 @@ const ResearchOverview = () => {
     researchQuery, 
     researchResults, 
     isResearching, 
-    researchError
+    researchError,
+    setResearchError
   } = useProteinStore();
   const { theme } = useThemeStore();
 
@@ -303,8 +304,20 @@ const ResearchOverview = () => {
               ? 'bg-red-900/20 border-red-800/50'
               : 'bg-red-50 border-red-200'
           }`}>
-            <AlertCircle className={`w-5 h-5 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
-            <span className={theme === 'dark' ? 'text-red-300' : 'text-red-900'}>{researchError}</span>
+            <AlertCircle className={`w-5 h-5 flex-shrink-0 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+            <span className={`flex-1 ${theme === 'dark' ? 'text-red-300' : 'text-red-900'}`}>{researchError}</span>
+            <button
+              onClick={() => setResearchError(null)}
+              className={`flex-shrink-0 p-1 rounded transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-red-800/50 text-red-400 hover:text-red-300'
+                  : 'hover:bg-red-100 text-red-600 hover:text-red-800'
+              }`}
+              aria-label="Dismiss error"
+              title="Dismiss error message"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
 

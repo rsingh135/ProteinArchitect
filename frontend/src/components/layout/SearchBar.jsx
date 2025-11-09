@@ -3,8 +3,7 @@ import { Search, X, Sparkles, Loader } from 'lucide-react';
 import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
-
-const API_URL = 'http://localhost:8000';
+import { API_ENDPOINTS, checkBackendHealth, getBackendErrorMessage } from '../../config/api';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -42,17 +41,13 @@ const SearchBar = () => {
     (async () => {
       try {
         // Check if backend is reachable
-        try {
-          const healthCheck = await fetch(`${API_URL}/health`);
-          if (!healthCheck.ok) {
-            throw new Error('Backend server is not responding');
-          }
-        } catch (healthErr) {
-          throw new Error('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000');
+        const isBackendAvailable = await checkBackendHealth();
+        if (!isBackendAvailable) {
+          throw new Error(getBackendErrorMessage());
         }
 
         console.log('🔬 Starting research in background...');
-        const response = await fetch(`${API_URL}/research_protein`, {
+        const response = await fetch(API_ENDPOINTS.researchProtein, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,7 +77,7 @@ const SearchBar = () => {
         console.log('✅ Research completed successfully');
       } catch (err) {
         const errorMessage = err.name === 'TypeError' && err.message.includes('Failed to fetch')
-          ? 'Failed to connect to backend server. Please ensure the backend is running on http://localhost:8000'
+          ? getBackendErrorMessage()
           : err.message;
         setResearchError(errorMessage);
         console.error('❌ Research failed:', err);
@@ -281,7 +276,7 @@ const SearchBar = () => {
             <button
               type="button"
               onClick={clearSearch}
-              className={`absolute right-14 p-1 rounded-full transition-colors ${
+              className={`absolute right-20 p-1 rounded-full transition-colors ${
                 theme === 'dark'
                   ? 'hover:bg-gray-700 text-gray-400'
                   : 'hover:bg-gray-100 text-gray-400'

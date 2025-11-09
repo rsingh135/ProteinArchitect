@@ -52,20 +52,52 @@ except Exception as e:
 app = FastAPI(title="Protein Architect API", version="1.0.0")
 
 # CORS middleware for frontend communication
-# Allow all localhost ports for development
+# Get frontend URL from environment (for production) or use localhost (for development)
+# Detect production environment (Render, Heroku, etc.)
+is_production = (
+    os.getenv("ENVIRONMENT") == "production" or 
+    os.getenv("RENDER") is not None or  # Render sets RENDER environment variable
+    os.getenv("DYNO") is not None  # Heroku sets DYNO
+)
+frontend_url = os.getenv("FRONTEND_URL", "")
+
+# Build list of allowed origins
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:8080",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:8080",
+]
+
+# Add production URL if set
+if frontend_url:
+    if not frontend_url.startswith("http"):
+        allowed_origins.append(f"https://{frontend_url}")
+    else:
+        allowed_origins.append(frontend_url)
+
+# In production, allow all origins (for Vercel preview deployments)
+# For security, you can restrict this by setting FRONTEND_URL to your specific domain
+if is_production:
+    logger.info("🌐 Production mode: Allowing all origins for CORS (for Vercel preview deployments)")
+    logger.info(f"   Set FRONTEND_URL={frontend_url} to restrict to specific domain")
+    # In production, allow all origins (works with Vercel preview URLs)
+    allowed_origins = ["*"]
+else:
+    # Remove duplicates and filter out empty strings
+    allowed_origins = list(set([origin for origin in allowed_origins if origin]))
+    logger.info(f"🔒 Development mode: CORS allowed origins: {allowed_origins}")
+
+# Configure CORS middleware
+# Note: When allow_origins=["*"], allow_credentials must be False
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:8080",
-    ],
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=not is_production,  # Can't use credentials with allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
