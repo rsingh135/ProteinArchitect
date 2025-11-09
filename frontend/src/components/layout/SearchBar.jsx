@@ -26,67 +26,67 @@ const SearchBar = () => {
     isResearching
   } = useProteinStore();
 
-  // Perform research if on research tab
+  // Perform research if on research tab (runs in background, non-blocking)
   const performResearch = async (searchQuery) => {
     if (!searchQuery.trim()) return;
 
-    setIsSearching(true);
     setIsResearching(true);
-    setError(null);
     setResearchError(null);
     setResearchQuery(searchQuery.trim());
     setResearchResults(null);
 
-    try {
-      // Check if backend is reachable
+    // Run research in background - don't block UI
+    (async () => {
       try {
-        const healthCheck = await fetch(`${API_URL}/health`);
-        if (!healthCheck.ok) {
-          throw new Error('Backend server is not responding');
-        }
-      } catch (healthErr) {
-        throw new Error('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000');
-      }
-
-      const response = await fetch(`${API_URL}/research_protein`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          protein_id: searchQuery.trim(),
-          model: 'google/gemini-2.0-flash-lite',
-          include_novel: true,
-          months_recent: 6,
-        }),
-      });
-
-      if (!response.ok) {
-        let errorMessage = `Research failed: ${response.status} ${response.statusText}`;
+        // Check if backend is reachable
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch (parseErr) {
-          const text = await response.text().catch(() => '');
-          if (text) errorMessage = text;
+          const healthCheck = await fetch(`${API_URL}/health`);
+          if (!healthCheck.ok) {
+            throw new Error('Backend server is not responding');
+          }
+        } catch (healthErr) {
+          throw new Error('Cannot connect to backend server. Please make sure the backend is running on http://localhost:8000');
         }
-        throw new Error(errorMessage);
-      }
 
-      const data = await response.json();
-      setResearchResults(data);
-      console.log('✅ Research completed successfully');
-    } catch (err) {
-      const errorMessage = err.name === 'TypeError' && err.message.includes('Failed to fetch')
-        ? 'Failed to connect to backend server. Please ensure the backend is running on http://localhost:8000'
-        : err.message;
-      setError(errorMessage);
-      setResearchError(errorMessage);
-      console.error('❌ Research failed:', err);
-    } finally {
-      setIsSearching(false);
-      setIsResearching(false);
-    }
+        console.log('🔬 Starting research in background...');
+        const response = await fetch(`${API_URL}/research_protein`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            protein_id: searchQuery.trim(),
+            model: 'google/gemini-2.0-flash-lite',
+            include_novel: true,
+            months_recent: 6,
+          }),
+        });
+
+        if (!response.ok) {
+          let errorMessage = `Research failed: ${response.status} ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch (parseErr) {
+            const text = await response.text().catch(() => '');
+            if (text) errorMessage = text;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const data = await response.json();
+        setResearchResults(data);
+        console.log('✅ Research completed successfully');
+      } catch (err) {
+        const errorMessage = err.name === 'TypeError' && err.message.includes('Failed to fetch')
+          ? 'Failed to connect to backend server. Please ensure the backend is running on http://localhost:8000'
+          : err.message;
+        setResearchError(errorMessage);
+        console.error('❌ Research failed:', err);
+      } finally {
+        setIsResearching(false);
+      }
+    })();
   };
 
   // Perform the actual search (for protein structure)
@@ -100,15 +100,16 @@ const SearchBar = () => {
     try {
       console.log('🔍 Starting search for:', searchQuery);
       
-      // Search for protein using the service
+      // STEP 1: Search for protein using the service
       const proteinData = await ProteinService.searchProtein(searchQuery);
       console.log('✅ Protein data received:', proteinData);
       
-      // Fetch the structure file
+      // STEP 2: Fetch the structure file (required for 3D viewer)
       const pdbData = await ProteinService.fetchStructure(proteinData, 'pdb');
       console.log('✅ PDB structure loaded');
       
-      // Update store with protein data
+      // STEP 3: IMMEDIATELY update store with protein data and PDB structure
+      // This will instantly populate the 3D viewer
       setTargetProtein({
         ...proteinData,
         pdbData, // Include PDB data for viewer
@@ -122,25 +123,40 @@ const SearchBar = () => {
         });
       }
       
+      // Mark loading as complete so UI is responsive
+      setIsSearching(false);
+      setIsLoading(false);
+      
       console.log('✅ Protein loaded successfully:', proteinData.name);
+      console.log('📊 3D viewer should now be visible');
+      
+      // STEP 4: Automatically trigger research in background if we have a UniProt ID
+      // This will populate the research dashboard automatically
+      if (proteinData.uniprotId) {
+        console.log('🔬 Auto-triggering research for:', proteinData.uniprotId);
+        performResearch(proteinData.uniprotId);
+      }
       
     } catch (err) {
       console.error('❌ Search failed:', err);
       setError(err.message);
+      setIsSearching(false);
+      setIsLoading(false);
       
       // Show error notification
       alert(`Failed to load protein: ${err.message}\n\nTry using a UniProt ID like 'P01308' (human insulin)`);
-    } finally {
-      setIsSearching(false);
-      setIsLoading(false);
     }
   };
 
   // Route search based on active view
   const handleSearch = async (searchQuery) => {
     if (activeView === 'research') {
-      await performResearch(searchQuery);
+      // For research tab: load protein structure immediately, then research in background
+      await performSearch(searchQuery);
+      // Start research in background (non-blocking)
+      performResearch(searchQuery);
     } else {
+      // For other views: just load the protein structure
       await performSearch(searchQuery);
     }
   };
@@ -222,15 +238,21 @@ const SearchBar = () => {
                 clearTimeout(searchTimeoutRef.current);
               }
               
-              // Auto-trigger research when on research tab and valid UniProt ID is entered
+              // Auto-trigger research immediately when on research tab and valid UniProt ID is entered
               if (activeView === 'research' && newValue.trim()) {
                 // Check if it looks like a UniProt ID (alphanumeric, typically 6-10 chars)
                 const uniprotPattern = /^[A-Z0-9]{6,10}$/i;
-                if (uniprotPattern.test(newValue.trim())) {
-                  // Debounce: wait 1 second after user stops typing
+                const trimmedValue = newValue.trim();
+                if (uniprotPattern.test(trimmedValue)) {
+                  // Very short debounce (200ms) to avoid triggering multiple times while typing
+                  // but feels immediate to the user
                   searchTimeoutRef.current = setTimeout(() => {
-                    handleSearch(newValue.trim());
-                  }, 1000);
+                    // Double-check the value still matches (user might have continued typing)
+                    const currentValue = inputRef.current?.value?.trim() || '';
+                    if (uniprotPattern.test(currentValue) && currentValue === trimmedValue) {
+                      handleSearch(trimmedValue);
+                    }
+                  }, 200);
                 }
               }
             }}

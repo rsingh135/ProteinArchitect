@@ -321,20 +321,65 @@ class AgenticResearchService:
         mcp_servers = ["windsor/exa-search-mcp"]
         
         logger.info(f"Starting research with MCP server: {mcp_servers[0]}")
-        try:
-            # Run the research agent with exa-search MCP server
-            # Based on Dedalus Labs docs: runner.run() accepts input, model, and mcp_servers
-            result = await self.runner.run(
-                input=research_prompt,
-                model=dedalus_model,
-                mcp_servers=mcp_servers
+        
+        # Retry logic with exponential backoff for 500 errors
+        max_retries = 3
+        base_delay = 2.0  # Start with 2 seconds
+        result = None
+        
+        for attempt in range(max_retries):
+            try:
+                # Add delay before retry (except first attempt)
+                if attempt > 0:
+                    delay = base_delay * (2 ** (attempt - 1))  # Exponential backoff: 2s, 4s, 8s
+                    logger.info(f"Retrying research (attempt {attempt + 1}/{max_retries}) after {delay:.1f}s delay...")
+                    await asyncio.sleep(delay)
+                
+                # Run the research agent with exa-search MCP server
+                # Based on Dedalus Labs docs: runner.run() accepts input, model, and mcp_servers
+                result = await self.runner.run(
+                    input=research_prompt,
+                    model=dedalus_model,
+                    mcp_servers=mcp_servers
+                )
+                logger.info(f"Research succeeded with MCP server: {mcp_servers[0]}")
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                error_msg = str(e)
+                is_500_error = "500" in error_msg or "Internal Server Error" in error_msg
+                is_mcp_error = "MCP tool" in error_msg or "web_search_exa" in error_msg or "TaskGroup" in error_msg
+                is_last_attempt = attempt == max_retries - 1
+                
+                # Retry on 500 errors or MCP tool errors (these are often transient)
+                if (is_500_error or is_mcp_error) and not is_last_attempt:
+                    logger.warning(f"Research failed with {'MCP tool' if is_mcp_error else '500'} error (attempt {attempt + 1}/{max_retries}): {error_msg[:200]}")
+                    continue  # Retry
+                elif is_mcp_error and is_last_attempt:
+                    # MCP server is failing - try without MCP servers as fallback
+                    logger.warning(f"MCP server {mcp_servers[0]} failed after {max_retries} attempts. Trying without MCP servers as fallback...")
+                    try:
+                        result = await self.runner.run(
+                            input=research_prompt,
+                            model=dedalus_model,
+                            mcp_servers=[]  # No MCP servers - LLM only
+                        )
+                        logger.info("Research succeeded without MCP servers (LLM only)")
+                        break  # Success
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback without MCP servers also failed: {fallback_error}")
+                        raise  # Re-raise original error
+                else:
+                    # Not a retryable error, or last attempt - re-raise
+                    logger.error(f"Research failed with MCP server {mcp_servers[0]}: {error_msg}")
+                    raise
+        
+        # Check if we got a result
+        if result is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Research failed: No result returned after all retry attempts"
             )
-            logger.info(f"Research succeeded with MCP server: {mcp_servers[0]}")
-        except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Research failed with MCP server {mcp_servers[0]}: {error_msg}")
-            # Re-raise the error - let the outer exception handler deal with it
-            raise
         
         # Access final_output from result (per Dedalus Labs Runner API)
         try:
@@ -514,7 +559,9 @@ class AgenticResearchService:
             if self.ncbi_email:
                 params["email"] = self.ncbi_email
             
-            logger.info(f"Searching PubMed for protein {protein_id}...")
+            # Use protein name in logging if available
+            protein_display = protein_info.get('name', protein_id) if protein_info else protein_id
+            logger.info(f"Searching PubMed for {protein_display} ({protein_id})...")
             response = await self.pubmed_client.get(esearch_url, params=params)
             response.raise_for_status()
             
@@ -522,10 +569,10 @@ class AgenticResearchService:
             pmids = esearch_data.get("esearchresult", {}).get("idlist", [])
             
             if not pmids:
-                logger.info(f"No PubMed results found for {protein_id}")
+                logger.info(f"No PubMed results found for {protein_display} ({protein_id})")
                 return []
             
-            logger.info(f"Found {len(pmids)} PubMed results for {protein_id}")
+            logger.info(f"Found {len(pmids)} PubMed results for {protein_display} ({protein_id})")
             
             # Fetch details for the PubMed IDs using EFetch
             efetch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
