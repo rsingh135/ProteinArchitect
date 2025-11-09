@@ -21,8 +21,9 @@ if (!fs.existsSync(scriptPath)) {
 // Determine Python command
 // On Windows, prefer 'python' over 'py' to use the correct environment
 // 'py' launcher may point to a different Python installation
+// Prioritize Python 3.11+ for dedalus-labs compatibility
 const isWin = process.platform === 'win32';
-const pythonCommands = isWin ? ['python', 'py'] : ['python3', 'python'];
+const pythonCommands = isWin ? ['python', 'py'] : ['python3.11', 'python3', 'python'];
 
 let currentIndex = 0;
 
