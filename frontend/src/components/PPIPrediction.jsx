@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Sparkles, AlertCircle, CheckCircle, XCircle, Clock, Dna, Video, Loader } from 'lucide-react';
 import './PPIPrediction.css';
 import { API_ENDPOINTS } from '../config/api';
+import { useThemeStore } from '../store/themeStore';
 
 const PPIPrediction = () => {
+  const { theme } = useThemeStore();
   const [mode, setMode] = useState('search'); // 'search' or 'sequence'
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -1270,23 +1272,25 @@ const PPIPrediction = () => {
     }
   };
 
+  const isDark = theme === 'dark';
+
   return (
-    <div className="ppi-prediction-container">
-      <div className="ppi-header">
-        <h2>Protein-Protein Interaction Prediction</h2>
-        <p>Predict interactions using UniProt IDs or create new interactions from amino acid sequences</p>
+    <div className={`ppi-prediction-container ${isDark ? 'dark' : ''}`}>
+      <div className={`ppi-header ${isDark ? 'dark' : ''}`}>
+        <h2 className={isDark ? 'text-white' : 'text-gray-900'}>Protein-Protein Interaction Prediction</h2>
+        <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>Predict interactions using UniProt IDs or create new interactions from amino acid sequences</p>
       </div>
 
       {/* Mode Toggle */}
-      <div className="mode-toggle">
+      <div className={`mode-toggle ${isDark ? 'dark' : ''}`}>
         <button
-          className={mode === 'search' ? 'active' : ''}
+          className={`${mode === 'search' ? 'active' : ''} ${isDark ? 'dark' : ''}`}
           onClick={() => setMode('search')}
         >
           <Search size={18} /> Search by ID
         </button>
         <button
-          className={mode === 'sequence' ? 'active' : ''}
+          className={`${mode === 'sequence' ? 'active' : ''} ${isDark ? 'dark' : ''}`}
           onClick={() => setMode('sequence')}
         >
           <Dna size={18} /> Create New Interaction
@@ -1299,8 +1303,8 @@ const PPIPrediction = () => {
           <div className="search-section">
             <form onSubmit={handleSearch} className="search-form">
               <div className="search-input-wrapper-relative">
-                <div className="search-input-wrapper">
-                  <Sparkles className="search-icon" />
+                <div className={`search-input-wrapper ${isDark ? 'dark' : ''}`}>
+                  <Sparkles className={`search-icon ${isDark ? 'text-blue-400' : ''}`} />
                   <input
                     ref={searchInputRef}
                     type="text"
@@ -1312,7 +1316,7 @@ const PPIPrediction = () => {
                       setTimeout(() => setIsSearchFocused(false), 200);
                     }}
                     placeholder="Search for a protein (e.g., 'human insulin', 'P01308')"
-                    className="search-input"
+                    className={`search-input ${isDark ? 'dark' : ''}`}
                   />
                   <button
                     type="submit"
@@ -1326,13 +1330,13 @@ const PPIPrediction = () => {
                 {/* Search Suggestions Dropdown */}
                 {isSearchFocused && !searchQuery && !isSearching && (
                   <div 
-                    className="search-suggestions-dropdown"
+                    className={`search-suggestions-dropdown ${isDark ? 'dark' : ''}`}
                     onMouseDown={(e) => {
                       // Prevent input blur when clicking on suggestions
                       e.preventDefault();
                     }}
                   >
-                    <p className="suggestions-header">Try these examples:</p>
+                    <p className={`suggestions-header ${isDark ? 'text-gray-300' : ''}`}>Try these examples:</p>
                     <div className="suggestions-list">
                       {proteinSuggestions.map((suggestion, index) => (
                         <button
@@ -1343,13 +1347,13 @@ const PPIPrediction = () => {
                             // Prevent input blur
                             e.preventDefault();
                           }}
-                          className="suggestion-item"
+                          className={`suggestion-item ${isDark ? 'dark' : ''}`}
                         >
                           <div className="suggestion-content">
-                            <span className="suggestion-id">{suggestion.id}</span>
-                            <span className="suggestion-name">{suggestion.name}</span>
+                            <span className={`suggestion-id ${isDark ? 'text-blue-400' : ''}`}>{suggestion.id}</span>
+                            <span className={`suggestion-name ${isDark ? 'text-white' : ''}`}>{suggestion.name}</span>
                           </div>
-                          <span className="suggestion-description">{suggestion.description}</span>
+                          <span className={`suggestion-description ${isDark ? 'text-gray-400' : ''}`}>{suggestion.description}</span>
                         </button>
                       ))}
                     </div>
@@ -1360,12 +1364,12 @@ const PPIPrediction = () => {
 
             {searchResults.length > 0 && (
               <div className="search-results">
-                <h3>Search Results</h3>
+                <h3 className={isDark ? 'text-white' : 'text-gray-900'}>Search Results</h3>
                 <div className="results-grid">
                   {searchResults.map((protein, index) => (
                     <div
                       key={index}
-                      className="protein-card"
+                      className={`protein-card ${isDark ? 'dark' : ''}`}
                       onClick={() => {
                         if (!selectedProteins.proteinA) {
                           selectProtein(protein, 'proteinA');
@@ -1377,12 +1381,12 @@ const PPIPrediction = () => {
                       }}
                     >
                       <div className="protein-card-header">
-                        <h4>{protein.name || protein.uniprot_id}</h4>
-                        <span className="uniprot-id">{protein.uniprot_id}</span>
+                        <h4 className={isDark ? 'text-white' : 'text-gray-900'}>{protein.name || protein.uniprot_id}</h4>
+                        <span className={`uniprot-id ${isDark ? 'dark' : ''}`}>{protein.uniprot_id}</span>
                       </div>
-                      <p className="protein-description">{protein.description}</p>
+                      <p className={`protein-description ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{protein.description}</p>
                       {protein.gene_name && (
-                        <span className="gene-name">Gene: {protein.gene_name}</span>
+                        <span className={`gene-name ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Gene: {protein.gene_name}</span>
                       )}
                     </div>
                   ))}
@@ -1392,14 +1396,14 @@ const PPIPrediction = () => {
           </div>
 
           <div className="selected-proteins-section">
-            <h3>Selected Proteins</h3>
+            <h3 className={isDark ? 'text-white' : 'text-gray-900'}>Selected Proteins</h3>
             <div className="selected-proteins-grid">
-              <div className="selected-protein-card">
-                <h4>Protein A</h4>
+              <div className={`selected-protein-card ${isDark ? 'dark' : ''}`}>
+                <h4 className={isDark ? 'text-blue-400' : 'text-primary-600'}>Protein A</h4>
                 {selectedProteins.proteinA ? (
                   <div className="selected-protein-info">
                     <div className="protein-info-header">
-                      <span className="protein-name">{selectedProteins.proteinA.name}</span>
+                      <span className={`protein-name ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedProteins.proteinA.name}</span>
                       <button
                         onClick={() => clearSelection('proteinA')}
                         className="clear-button"
@@ -1407,20 +1411,20 @@ const PPIPrediction = () => {
                         <XCircle size={20} />
                       </button>
                     </div>
-                    <span className="uniprot-id">{selectedProteins.proteinA.uniprot_id}</span>
-                    <p className="protein-description">{selectedProteins.proteinA.description}</p>
+                    <span className={`uniprot-id ${isDark ? 'dark' : ''}`}>{selectedProteins.proteinA.uniprot_id}</span>
+                    <p className={`protein-description ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{selectedProteins.proteinA.description}</p>
                   </div>
                 ) : (
-                  <div className="empty-slot">No protein selected</div>
+                  <div className={`empty-slot ${isDark ? 'dark' : ''}`}>No protein selected</div>
                 )}
               </div>
 
-              <div className="selected-protein-card">
-                <h4>Protein B</h4>
+              <div className={`selected-protein-card ${isDark ? 'dark' : ''}`}>
+                <h4 className={isDark ? 'text-blue-400' : 'text-primary-600'}>Protein B</h4>
                 {selectedProteins.proteinB ? (
                   <div className="selected-protein-info">
                     <div className="protein-info-header">
-                      <span className="protein-name">{selectedProteins.proteinB.name}</span>
+                      <span className={`protein-name ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedProteins.proteinB.name}</span>
                       <button
                         onClick={() => clearSelection('proteinB')}
                         className="clear-button"
@@ -1428,11 +1432,11 @@ const PPIPrediction = () => {
                         <XCircle size={20} />
                       </button>
                     </div>
-                    <span className="uniprot-id">{selectedProteins.proteinB.uniprot_id}</span>
-                    <p className="protein-description">{selectedProteins.proteinB.description}</p>
+                    <span className={`uniprot-id ${isDark ? 'dark' : ''}`}>{selectedProteins.proteinB.uniprot_id}</span>
+                    <p className={`protein-description ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{selectedProteins.proteinB.description}</p>
                   </div>
                 ) : (
-                  <div className="empty-slot">No protein selected</div>
+                  <div className={`empty-slot ${isDark ? 'dark' : ''}`}>No protein selected</div>
                 )}
               </div>
             </div>
@@ -1451,9 +1455,9 @@ const PPIPrediction = () => {
       {/* Sequence Input Mode - Create New Interaction */}
       {mode === 'sequence' && (
         <div className="sequence-input-section">
-          <div className="new-interaction-info">
-            <h3>Create New Protein-Protein Interaction</h3>
-            <p>
+          <div className={`new-interaction-info ${isDark ? 'dark' : ''}`}>
+            <h3 className={isDark ? 'text-white' : 'text-white'}>Create New Protein-Protein Interaction</h3>
+            <p className={isDark ? 'text-gray-200' : 'text-white'}>
               Enter two amino acid sequences to create a novel protein-protein interaction. 
               The system will use AlphaFold/ColabFold to predict the 3D structures and simulate their interaction.
             </p>
@@ -1467,19 +1471,19 @@ const PPIPrediction = () => {
                   value={proteinAName}
                   onChange={(e) => setProteinAName(e.target.value)}
                   placeholder="Protein A Name (optional, e.g., 'Custom Protein A')"
-                  className="protein-name-input"
+                  className={`protein-name-input ${isDark ? 'dark' : ''}`}
                 />
               </label>
               <label>
-                <span>Protein A Sequence (one-letter amino acid codes: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)</span>
+                <span className={isDark ? 'text-white' : 'text-gray-900'}>Protein A Sequence (one-letter amino acid codes: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)</span>
                 <textarea
                   value={sequenceA}
                   onChange={(e) => setSequenceA(e.target.value)}
                   placeholder="Enter amino acid sequence for Protein A (e.g., MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL)"
-                  className="sequence-textarea"
+                  className={`sequence-textarea ${isDark ? 'dark' : ''}`}
                   rows={8}
                 />
-                <span className="sequence-info">
+                <span className={`sequence-info ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {sequenceA.replace(/\s/g, '').length} amino acids
                   {sequenceA.replace(/\s/g, '').length > 0 && (
                     <span className="sequence-validity">
@@ -1499,19 +1503,19 @@ const PPIPrediction = () => {
                   value={proteinBName}
                   onChange={(e) => setProteinBName(e.target.value)}
                   placeholder="Protein B Name (optional, e.g., 'Custom Protein B')"
-                  className="protein-name-input"
+                  className={`protein-name-input ${isDark ? 'dark' : ''}`}
                 />
               </label>
               <label>
-                <span>Protein B Sequence (one-letter amino acid codes: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)</span>
+                <span className={isDark ? 'text-white' : 'text-gray-900'}>Protein B Sequence (one-letter amino acid codes: A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)</span>
                 <textarea
                   value={sequenceB}
                   onChange={(e) => setSequenceB(e.target.value)}
                   placeholder="Enter amino acid sequence for Protein B (e.g., MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL)"
-                  className="sequence-textarea"
+                  className={`sequence-textarea ${isDark ? 'dark' : ''}`}
                   rows={8}
                 />
-                <span className="sequence-info">
+                <span className={`sequence-info ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {sequenceB.replace(/\s/g, '').length} amino acids
                   {sequenceB.replace(/\s/g, '').length > 0 && (
                     <span className="sequence-validity">
@@ -1525,9 +1529,9 @@ const PPIPrediction = () => {
             </div>
           </div>
 
-          <div className="prediction-info-box">
-            <p>
-              <strong>What happens next:</strong> The system will use AlphaFold/ColabFold to predict the 3D structures 
+          <div className={`prediction-info-box ${isDark ? 'dark' : ''}`}>
+            <p className={isDark ? 'text-blue-200' : 'text-blue-900'}>
+              <strong className={isDark ? 'text-blue-100' : 'text-blue-800'}>What happens next:</strong> The system will use AlphaFold/ColabFold to predict the 3D structures 
               of both proteins, then simulate their interaction to create a docked complex. This process may take a few minutes.
             </p>
           </div>
@@ -1554,51 +1558,51 @@ const PPIPrediction = () => {
 
       {/* Progress Bar */}
       {isPredicting && (
-        <div className="progress-section">
-          <div className="progress-header">
-            <Clock size={18} />
-            <span>Computing interaction prediction...</span>
-            <span className="elapsed-time">{formatTime(elapsedTime)}</span>
+        <div className={`progress-section ${isDark ? 'dark' : ''}`}>
+          <div className={`progress-header ${isDark ? 'dark' : ''}`}>
+            <Clock size={18} className={isDark ? 'text-white' : ''} />
+            <span className={isDark ? 'text-white' : 'text-gray-900'}>Computing interaction prediction...</span>
+            <span className={`elapsed-time ${isDark ? 'text-blue-400' : 'text-primary-600'}`}>{formatTime(elapsedTime)}</span>
           </div>
-          <div className="progress-bar-container">
+          <div className={`progress-bar-container ${isDark ? 'dark' : ''}`}>
             <div 
               className="progress-bar-fill" 
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="progress-steps">
-            <span className={progress > 10 ? 'completed' : ''}>Validating sequences</span>
-            <span className={progress > 30 ? 'completed' : ''}>
+          <div className={`progress-steps ${isDark ? 'dark' : ''}`}>
+            <span className={`${progress > 10 ? 'completed' : ''} ${isDark ? 'dark' : ''}`}>Validating sequences</span>
+            <span className={`${progress > 30 ? 'completed' : ''} ${isDark ? 'dark' : ''}`}>
               {mode === 'sequence' ? 'Predicting structures (AlphaFold)' : 'Fetching structures'}
             </span>
-            <span className={progress > 60 ? 'completed' : ''}>Predicting interaction</span>
-            <span className={progress > 90 ? 'completed' : ''}>Generating 3D complex</span>
+            <span className={`${progress > 60 ? 'completed' : ''} ${isDark ? 'dark' : ''}`}>Predicting interaction</span>
+            <span className={`${progress > 90 ? 'completed' : ''} ${isDark ? 'dark' : ''}`}>Generating 3D complex</span>
           </div>
         </div>
       )}
 
       {/* Error Display */}
       {error && (
-        <div className="error-message">
+        <div className={`error-message ${isDark ? 'dark' : ''}`}>
           <AlertCircle size={20} />
-          <span>{error}</span>
+          <span className={isDark ? 'text-red-300' : 'text-red-900'}>{error}</span>
         </div>
       )}
 
       {/* Prediction Results */}
       {predictionResult && (
         <div className="prediction-results">
-          <h3>Prediction Results</h3>
+          <h3 className={isDark ? 'text-white' : 'text-gray-900'}>Prediction Results</h3>
           {predictionResult.computation_time && (
-            <div className="computation-info">
-              <Clock size={16} />
-              <span>Computation time: {formatTime(predictionResult.computation_time)}</span>
+            <div className={`computation-info ${isDark ? 'dark' : ''}`}>
+              <Clock size={16} className={isDark ? 'text-blue-400' : ''} />
+              <span className={isDark ? 'text-blue-300' : 'text-blue-900'}>Computation time: {formatTime(predictionResult.computation_time)}</span>
             </div>
           )}
           <div className="results-grid-2">
-            <div className="result-card">
-              <div className="result-header">
-                <h4>Interaction Prediction</h4>
+            <div className={`result-card ${isDark ? 'dark' : ''}`}>
+              <div className={`result-header ${isDark ? 'dark' : ''}`}>
+                <h4 className={isDark ? 'text-white' : 'text-gray-900'}>Interaction Prediction</h4>
                 {predictionResult.interacts ? (
                   <CheckCircle className="interaction-icon positive" size={24} />
                 ) : (
@@ -1607,19 +1611,19 @@ const PPIPrediction = () => {
               </div>
               <div className="result-content">
                 <div className="result-item">
-                  <span className="result-label">Interaction:</span>
-                  <span className={`result-value ${predictionResult.interacts ? 'positive' : 'negative'}`}>
+                  <span className={`result-label ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Interaction:</span>
+                  <span className={`result-value ${predictionResult.interacts ? 'positive' : 'negative'} ${isDark ? (predictionResult.interacts ? 'text-green-400' : 'text-red-400') : ''}`}>
                     {predictionResult.interacts ? 'Yes' : 'No'}
                   </span>
                 </div>
                 <div className="result-item">
-                  <span className="result-label">Probability:</span>
-                  <span className="result-value">
+                  <span className={`result-label ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Probability:</span>
+                  <span className={`result-value ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {(predictionResult.interaction_probability * 100).toFixed(1)}%
                   </span>
                 </div>
                 <div className="result-item">
-                  <span className="result-label">Confidence:</span>
+                  <span className={`result-label ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Confidence:</span>
                   <span
                     className="result-value"
                     style={{ color: getConfidenceColor(predictionResult.confidence) }}
@@ -1628,12 +1632,12 @@ const PPIPrediction = () => {
                   </span>
                 </div>
                 <div className="result-item">
-                  <span className="result-label">Interaction Type:</span>
-                  <span className="result-value">{predictionResult.interaction_type}</span>
+                  <span className={`result-label ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Interaction Type:</span>
+                  <span className={`result-value ${isDark ? 'text-white' : 'text-gray-900'}`}>{predictionResult.interaction_type}</span>
                 </div>
                 <div className="result-item">
-                  <span className="result-label">Type Confidence:</span>
-                  <span className="result-value">
+                  <span className={`result-label ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Type Confidence:</span>
+                  <span className={`result-value ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {(predictionResult.type_confidence * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -1641,14 +1645,14 @@ const PPIPrediction = () => {
             </div>
 
             {/* 3D Visualization */}
-            <div className="visualization-card">
-              <h4>3D Interaction Visualization</h4>
+            <div className={`visualization-card ${isDark ? 'dark' : ''}`}>
+              <h4 className={isDark ? 'text-white' : 'text-gray-900'}>3D Interaction Visualization</h4>
               <div 
                 ref={viewerRef} 
                 className="dmol-viewer" 
                 style={{ width: '100%', height: '500px', minHeight: '500px' }} 
               />
-              <p className="visualization-note">
+              <p className={`visualization-note ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                 {predictionResult.note || '3D complex structure showing predicted interaction'}
               </p>
               
@@ -1724,16 +1728,16 @@ const PPIPrediction = () => {
 
               {/* Video Error */}
               {videoError && (
-                <div className="video-error">
+                <div className={`video-error ${isDark ? 'dark' : ''}`}>
                   <AlertCircle size={16} />
-                  <span>{videoError}</span>
+                  <span className={isDark ? 'text-red-300' : 'text-red-900'}>{videoError}</span>
                 </div>
               )}
 
               {/* Generated Video */}
               {generatedVideo && (
-                <div className="generated-video-container">
-                  <h5>Generated Interaction Video</h5>
+                <div className={`generated-video-container ${isDark ? 'dark' : ''}`}>
+                  <h5 className={isDark ? 'text-white' : 'text-gray-900'}>Generated Interaction Video</h5>
                   <video
                     controls
                     className="generated-video"
