@@ -351,7 +351,7 @@ const AnalysisDashboard = () => {
                 />
               </div>
             </div>
-          </div>
+        </div>
 
           {/* Binding Site Analysis */}
           <div className={`rounded-lg border shadow-sm p-6 transition-colors ${
@@ -362,7 +362,7 @@ const AnalysisDashboard = () => {
             <h3 className={`text-lg font-semibold mb-4 flex items-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               <Target className={`w-5 h-5 mr-2 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
               Binding Site Analysis
-            </h3>
+          </h3>
             <div className="space-y-4">
               <div>
                 <label className={`text-xs font-medium mb-1 block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Binding Sites</label>
@@ -436,7 +436,7 @@ const AnalysisDashboard = () => {
               {interactionTypeAnalysis.types && Object.keys(interactionTypeAnalysis.types).length > 0 && (
                 <div>
                   <label className={`text-xs font-medium mb-2 block ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Interaction Type Distribution</label>
-                  <div className="space-y-2">
+          <div className="space-y-2">
                     {Object.entries(interactionTypeAnalysis.types).map(([type, count]) => (
                       <div key={type} className={`flex items-center justify-between p-2 rounded border transition-colors ${
                         theme === 'dark'
@@ -589,8 +589,8 @@ const AnalysisDashboard = () => {
                         <span className={`ml-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                           {contact.distance} Å ({contact.type})
                         </span>
-                      </div>
-                    ))}
+              </div>
+            ))}
                   </div>
                 </div>
               )}

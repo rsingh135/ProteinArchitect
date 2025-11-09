@@ -52,10 +52,10 @@ const AIChat = () => {
         name: targetProtein.name || null,
         organism: targetProtein.organism || null,
         function: targetProtein.function || null,
-        sequence: targetProtein.sequence ? String(targetProtein.sequence) : null,
+        sequence: targetProtein.sequence?.full || (typeof targetProtein.sequence === 'string' ? targetProtein.sequence : null),
         metrics: targetProtein.metrics ? {
           plddt: targetProtein.metrics.plddt || null,
-          length: targetProtein.metrics.length || null,
+          length: targetProtein.metrics.length || (targetProtein.sequence?.length || null),
           mass: targetProtein.metrics.mass || null
         } : null
       } : null;
@@ -65,10 +65,10 @@ const AIChat = () => {
         name: binderProtein.name || null,
         organism: binderProtein.organism || null,
         function: binderProtein.function || null,
-        sequence: binderProtein.sequence ? String(binderProtein.sequence) : null,
+        sequence: binderProtein.sequence?.full || (typeof binderProtein.sequence === 'string' ? binderProtein.sequence : null),
         metrics: binderProtein.metrics ? {
           plddt: binderProtein.metrics.plddt || null,
-          length: binderProtein.metrics.length || null,
+          length: binderProtein.metrics.length || (binderProtein.sequence?.length || null),
           mass: binderProtein.metrics.mass || null
         } : null
       } : null;
@@ -90,10 +90,15 @@ const AIChat = () => {
       });
 
       // Add assistant response
-      setMessages([...newMessages, { role: 'assistant', content: response.data.response }]);
+      if (response.data && response.data.response) {
+        setMessages([...newMessages, { role: 'assistant', content: response.data.response }]);
+      } else {
+        console.error('Invalid response format:', response.data);
+        setMessages([...newMessages, { role: 'assistant', content: 'Received an invalid response from the server. Please try again.' }]);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to get response. Please check if the backend is running and GEMINI_API_KEY is set.';
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to get response. Please check if the backend is running and GEMINI_API_KEY is set.';
       setMessages([...newMessages, { role: 'assistant', content: `Error: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);

@@ -4,34 +4,79 @@ import { useProteinStore } from '../../store/proteinStore';
 import { useThemeStore } from '../../store/themeStore';
 import { ProteinService } from '../../services/proteinService';
 import InteractionService from '../../services/interactionService';
+import UniProtService from '../../services/uniprotService';
 
 const ProteinOverview = ({ showPPISuggestions = false }) => {
   const { targetProtein, confidenceScores, setBinderProtein } = useProteinStore();
   const { theme } = useThemeStore();
   const [ppiSuggestions, setPpiSuggestions] = useState([]);
   const [isLoadingInteractions, setIsLoadingInteractions] = useState(false);
+  const [proteinFunction, setProteinFunction] = useState('');
   
-  // Fetch real interactions when target protein changes
+  // Fetch protein function and interactions when target protein changes
   useEffect(() => {
-    const fetchInteractions = async () => {
-      if (!targetProtein?.uniprotId || !showPPISuggestions) {
+    const fetchProteinData = async () => {
+      if (!targetProtein?.uniprotId) {
+        setProteinFunction('');
         setPpiSuggestions([]);
         return;
       }
 
-      setIsLoadingInteractions(true);
+      // Fetch protein function from UniProt
       try {
-        const interactions = await InteractionService.fetchInteractions(targetProtein.uniprotId);
-        setPpiSuggestions(interactions);
+        const uniprotData = await UniProtService.fetchProteinDetails(targetProtein.uniprotId);
+        const functionText = uniprotData.function || '';
+        // Extract first sentence from function text, max 120 characters for concise display
+        if (functionText) {
+          // Find first sentence (ends with period, exclamation, or question mark)
+          const sentenceMatch = functionText.match(/^[^.!?]+[.!?]/);
+          let firstSentence = sentenceMatch 
+            ? sentenceMatch[0].trim() 
+            : functionText.split('.')[0].trim();
+          
+          // Clean up common prefixes and make it concise
+          firstSentence = firstSentence
+            .replace(/^(FUNCTION|Function):\s*/i, '')
+            .replace(/^This protein\s+/i, '')
+            .trim();
+          
+          // Truncate if too long, ensuring it ends properly
+          if (firstSentence.length > 120) {
+            const truncated = firstSentence.substring(0, 117);
+            // Try to end at a word boundary
+            const lastSpace = truncated.lastIndexOf(' ');
+            setProteinFunction(lastSpace > 80 
+              ? truncated.substring(0, lastSpace) + '...' 
+              : truncated + '...');
+          } else {
+            setProteinFunction(firstSentence);
+          }
+        } else {
+          setProteinFunction('');
+        }
       } catch (error) {
-        console.error('Error fetching interactions:', error);
+        console.error('Error fetching protein function:', error);
+        setProteinFunction('');
+      }
+
+      // Fetch interactions if needed
+      if (showPPISuggestions) {
+        setIsLoadingInteractions(true);
+        try {
+          const interactions = await InteractionService.fetchInteractions(targetProtein.uniprotId);
+          setPpiSuggestions(interactions);
+        } catch (error) {
+          console.error('Error fetching interactions:', error);
+          setPpiSuggestions([]);
+        } finally {
+          setIsLoadingInteractions(false);
+        }
+      } else {
         setPpiSuggestions([]);
-      } finally {
-        setIsLoadingInteractions(false);
       }
     };
 
-    fetchInteractions();
+    fetchProteinData();
   }, [targetProtein?.uniprotId, showPPISuggestions]);
   
   // Handle adding a partner protein
@@ -81,10 +126,16 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
     if (!targetProtein) {
       return 'Search for a protein to view its details';
     }
-    if (targetProtein.metadata?.gene) {
-      return `Gene: ${targetProtein.metadata.gene}. Predicted structure from AlphaFold.`;
+    // Use function from UniProt if available
+    if (proteinFunction) {
+      return proteinFunction;
     }
-    return 'Protein structure predicted by AlphaFold database.';
+    // Fallback to gene name if available
+    if (targetProtein.metadata?.gene) {
+      return `Gene: ${targetProtein.metadata.gene}`;
+    }
+    // Last resort: use protein name
+    return proteinName;
   };
 
   // Get confidence badge color
@@ -178,32 +229,7 @@ const ProteinOverview = ({ showPPISuggestions = false }) => {
                 <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Mass</p>
                 <p className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{molecularWeight.toFixed(1)} kDa</p>
               </div>
-              <div className={`rounded-lg p-3 border col-span-2 transition-colors ${
-                theme === 'dark'
-                  ? 'bg-gray-700/50 border-gray-600'
-                  : 'bg-gray-50 border-gray-200'
-              }`}>
-                <p className={`text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Average pLDDT</p>
-                <div className="flex items-center justify-between">
-                  <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{plddt.toFixed(1)}</p>
-                  <div className="flex-1 ml-3">
-                    <div className={`h-2 rounded-full overflow-hidden ${
-                      theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
-                    }`}>
-                      <div 
-                        className={`h-full ${plddt >= 70 ? 'bg-green-500' : plddt >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${plddt}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-            {targetProtein.metrics?.modelVersion && (
-              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                Model: AlphaFold {targetProtein.metrics.modelVersion}
-              </p>
-            )}
           </div>
         )}
 
