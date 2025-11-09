@@ -39,8 +39,35 @@ class GeminiProteinSearchService:
         
         if GEMINI_AVAILABLE:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-pro')
-            logger.info("Gemini API initialized successfully")
+            # List available models and use the first flash model that supports generateContent
+            try:
+                available_models = list(genai.list_models())
+                model_name = None
+                for model in available_models:
+                    if 'generateContent' in model.supported_generation_methods:
+                        # Prefer flash models (faster), then pro models
+                        if 'flash' in model.name.lower():
+                            model_name = model.name
+                            break
+                
+                # If no flash model, use first available model
+                if not model_name:
+                    for model in available_models:
+                        if 'generateContent' in model.supported_generation_methods:
+                            model_name = model.name
+                            break
+                
+                if model_name:
+                    # Extract just the model name (remove 'models/' prefix if present)
+                    clean_name = model_name.split('/')[-1] if '/' in model_name else model_name
+                    self.model = genai.GenerativeModel(clean_name)
+                    logger.info(f"Gemini API initialized successfully with {clean_name}")
+                else:
+                    logger.error("No suitable Gemini model found")
+                    self.model = None
+            except Exception as e:
+                logger.error(f"Failed to initialize Gemini model: {e}")
+                self.model = None
         else:
             logger.warning("Gemini API not available. Using fallback method.")
             self.model = None

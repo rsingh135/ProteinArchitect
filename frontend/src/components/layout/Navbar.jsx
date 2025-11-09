@@ -1,8 +1,11 @@
 import React from 'react';
-import { Upload, Settings, HelpCircle } from 'lucide-react';
+import { Upload, Settings, HelpCircle, MessageCircle } from 'lucide-react';
 import SearchBar from './SearchBar';
+import { useProteinStore } from '../../store/proteinStore';
 
 const Navbar = () => {
+  const { isChatOpen, setIsChatOpen } = useProteinStore();
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
@@ -23,6 +26,18 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`p-2 rounded-lg transition-colors ${
+              isChatOpen
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'hover:bg-gray-100 text-gray-600'
+            }`}
+            title="AI Assistant"
+          >
+            <MessageCircle className="w-5 h-5" />
+          </button>
+
           <button
             className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             title="Upload Sequence"

@@ -22,9 +22,16 @@ const DualViewer = () => {
     setSyncRotation,
     setBinderProtein,
     setInterfaceContacts,
+    setInteractionStats: setInteractionStatsInStore,
   } = useProteinStore();
   
   const [interactionStats, setInteractionStats] = useState(null);
+  
+  // Sync interaction stats to store for chat context
+  const updateInteractionStats = (stats) => {
+    setInteractionStats(stats);
+    setInteractionStatsInStore(stats);
+  };
 
   const [leftViewer, setLeftViewer] = useState(null);
   const [rightViewer, setRightViewer] = useState(null);
@@ -122,7 +129,7 @@ const DualViewer = () => {
               showOverlays={false}
             />
           </div>
-          
+
           {/* Stats for Target Protein */}
           {targetProtein && (
             <div className="mt-4 grid grid-cols-3 gap-3">
@@ -136,14 +143,14 @@ const DualViewer = () => {
                 <div className="text-xs text-gray-600 mb-1 text-center">Mass</div>
                 <div className="text-sm font-semibold text-gray-900 text-center">
                   {targetProtein.sequence ? `${(targetProtein.sequence.length * 110 / 1000).toFixed(1)} kDa` : '-- kDa'}
-                </div>
-              </div>
+            </div>
+          </div>
               <div className="py-3 px-2 rounded-lg bg-blue-50 border border-blue-200">
                 <div className="text-xs text-gray-600 mb-1 text-center">pLDDT</div>
                 <div className="text-sm font-semibold text-gray-900 text-center">
                   {targetProtein.metrics ? targetProtein.metrics.plddt.toFixed(1) : '--'}
-                </div>
-              </div>
+            </div>
+            </div>
             </div>
           )}
         </motion.div>
@@ -201,8 +208,8 @@ const DualViewer = () => {
                 disabled={!binderProtein}
                 aria-label="Expand interaction viewer"
               >
-                <Maximize2 className="w-4 h-4 text-gray-600" />
-              </button>
+              <Maximize2 className="w-4 h-4 text-gray-600" />
+            </button>
             </div>
           </div>
 
@@ -220,38 +227,38 @@ const DualViewer = () => {
                 showInteractionsInView={false}
                 showOverlays={false}
                 onInteractionStatsCalculated={(stats) => {
-                  setInteractionStats(stats);
+                  updateInteractionStats(stats);
                   setInterfaceContacts(stats.contacts);
                 }}
               />
             ) : (
               <>
-                <MolecularViewer
+            <MolecularViewer
                   pdbData={binderProtein?.pdbData || null}
-                  style={renderStyle}
-                  colorScheme={colorScheme}
-                  height="100%"
-                  onViewerReady={setRightViewer}
-                />
+              style={renderStyle}
+              colorScheme={colorScheme}
+              height="100%"
+              onViewerReady={setRightViewer}
+            />
 
-                {/* Empty State Overlay */}
+            {/* Empty State Overlay */}
                 {!binderProtein && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-50/95 backdrop-blur-sm rounded-lg">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Eye className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <p className="text-gray-600 text-sm mb-4">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-50/95 backdrop-blur-sm rounded-lg">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Eye className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-600 text-sm mb-4">
                         Search for a binding partner to visualize interactions
-                      </p>
+                </p>
                       <button 
                         onClick={() => setIsPartnerSearchOpen(true)}
                         className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
                       >
-                        Add Partner
-                      </button>
-                    </div>
-                  </div>
+                  Add Partner
+                </button>
+              </div>
+            </div>
                 )}
               </>
             )}
@@ -298,7 +305,7 @@ const DualViewer = () => {
                 <div className="text-sm font-semibold text-gray-900 text-center">
                   {binderProtein.metrics ? binderProtein.metrics.plddt.toFixed(1) : '--'}
                 </div>
-              </div>
+            </div>
             </div>
           ) : null}
         </motion.div>
@@ -337,7 +344,7 @@ const DualViewer = () => {
         colorScheme={colorScheme}
         renderStyle={renderStyle}
         onInteractionStatsCalculated={(stats) => {
-          setInteractionStats(stats);
+          updateInteractionStats(stats);
           setInterfaceContacts(stats.contacts);
         }}
       />

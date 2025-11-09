@@ -10,7 +10,7 @@ import { useProteinStore } from './store/proteinStore';
 
 function App() {
   const [activeView, setActiveView] = useState('viewer');
-  const setActiveViewInStore = useProteinStore((state) => state.setActiveView);
+  const { setActiveView: setActiveViewInStore, isChatOpen, setIsChatOpen } = useProteinStore();
 
   // Sync activeView with store
   useEffect(() => {
@@ -34,7 +34,7 @@ function App() {
               <Layers className="w-4 h-4" />
               <span>3D Viewer</span>
             </button>
-            <button
+        <button
               onClick={() => setActiveView('analysis')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
                 activeView === 'analysis'
@@ -44,29 +44,29 @@ function App() {
             >
               <BarChart3 className="w-4 h-4" />
               <span>Analysis Dashboard</span>
-            </button>
-            <button
+        </button>
+        <button
               onClick={() => setActiveView('ppi')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
                 activeView === 'ppi'
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-            >
+        >
               <Dna className="w-4 h-4" />
               <span>PPI Prediction</span>
-            </button>
-            <button
+        </button>
+        <button
               onClick={() => setActiveView('research')}
               className={`px-6 py-2 rounded-md text-sm font-medium transition-all flex items-center space-x-2 ${
                 activeView === 'research'
                   ? 'bg-white text-primary-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
-            >
+        >
               <BookOpen className="w-4 h-4" />
               <span>Research</span>
-            </button>
+        </button>
           </div>
         </div>
 
@@ -77,7 +77,7 @@ function App() {
           {activeView === 'ppi' && <PPIPrediction />}
           {activeView === 'research' && <ResearchOverview />}
         </div>
-      </div>
+    </div>
 
       {/* AI Chat (Floating) */}
       <AIChat />

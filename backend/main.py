@@ -22,6 +22,7 @@ from services.oracle import ExpressibilityOracle
 from services.manufacturing_agent import ManufacturingAgent
 from services.gemini_service import GeminiProteinSearchService
 from services.ppi_service import PPIService
+from services.chat_service import ProteinChatService
 
 # Initialize agentic research service (optional - may fail if DEDALUS_API_KEY not set)
 try:
@@ -79,6 +80,13 @@ except Exception as e:
     logger.warning(f"Could not initialize Gemini service: {e}")
     gemini_service = None
 
+# Initialize chat service
+try:
+    chat_service = ProteinChatService()
+except Exception as e:
+    logger.warning(f"Could not initialize chat service: {e}")
+    chat_service = None
+
 # Initialize PPI prediction service (use local for development, SageMaker for production)
 use_local_ppi = os.getenv("USE_LOCAL_PPI", "true").lower() == "true"
 ppi_service = PPIService(use_local=use_local_ppi)
@@ -112,6 +120,13 @@ class ProteinResearchRequest(BaseModel):
     months_recent: Optional[int] = 6  # Months to consider for novel research
 
 
+class ChatMessageRequest(BaseModel):
+    message: str
+    target_protein: Optional[Dict] = None
+    binder_protein: Optional[Dict] = None
+    interaction_stats: Optional[Dict] = None
+
+
 @app.get("/")
 async def root():
     return {
@@ -123,6 +138,7 @@ async def root():
             "/predict_ppi",
             "/research_protein",
             "/list_models",
+            "/chat",
             "/health"
         ]
     }
@@ -324,4 +340,59 @@ async def research_protein(request: ProteinResearchRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Research failed: {str(e)}")
+
+
+@app.post("/chat")
+async def chat(request: ChatMessageRequest):
+    """
+    Chat with AI assistant about proteins currently loaded in the viewer.
+    
+    Uses Gemini API to answer questions about:
+    - Target protein structure, function, and properties
+    - Partner/binder protein (if loaded)
+    - Protein-protein interactions (if available)
+    - Binding sites, confidence scores, functional domains, etc.
+    
+    Args:
+        message: User's question
+        target_protein: Target protein data (optional)
+        binder_protein: Partner protein data (optional)
+        interaction_stats: Interaction statistics (optional)
+    
+    Returns:
+        AI response with answer to the question
+    """
+    try:
+        if not chat_service:
+            raise HTTPException(
+                status_code=503,
+                detail="Chat service not available. Please set GEMINI_API_KEY environment variable."
+            )
+        
+        if not request.message or len(request.message.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Message is required")
+        
+        # Get chat response
+        response = chat_service.chat(
+            message=request.message,
+            target_protein=request.target_protein,
+            binder_protein=request.binder_protein,
+            interaction_stats=request.interaction_stats
+        )
+        
+        return {
+            "message": request.message,
+            "response": response,
+            "has_target_protein": request.target_protein is not None,
+            "has_binder_protein": request.binder_protein is not None,
+            "has_interactions": request.interaction_stats is not None
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in chat: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
 

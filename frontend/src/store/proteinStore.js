@@ -21,10 +21,13 @@ export const useProteinStore = create((set) => ({
   interfaceContacts: null,
 
   // UI state
-  isChatOpen: true,
+  isChatOpen: false, // Start with chat closed
   activePanel: 'analysis', // 'analysis' | 'sequence' | 'export'
   activeView: 'viewer', // 'viewer' | 'analysis' | 'ppi' | 'research'
   isLoading: false,
+  
+  // Chat state
+  interactionStats: null, // Store interaction stats for chat context
 
   // Research state
   researchQuery: null,
@@ -48,6 +51,7 @@ export const useProteinStore = create((set) => ({
   setActivePanel: (panel) => set({ activePanel: panel }),
   setActiveView: (view) => set({ activeView: view }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setInteractionStats: (stats) => set({ interactionStats: stats }),
 
   // Research actions
   setResearchQuery: (query) => set({ researchQuery: query }),
